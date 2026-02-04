@@ -163,7 +163,7 @@ export function ComponentSkeleton({ slug, className }: SkeletonProps) {
           <div>
             <div className="flex items-center gap-2 py-2">
               <div className="w-1/3 h-7 rounded-sm dark:bg-white/10 bg-black/10" />
-              <div className="w-1/3 h-7 rounded-sm dark:bg-white/2 bg-black/10" />
+              <div className="w-1/3 h-7 rounded-sm dark:bg-white/5 bg-black/5" />
             </div>
             <div className="w-48 border border-foreground/10 rounded-lg p-1 flex flex-col gap-3 bg-foreground/5 px-2 py-4">
               <div className="w-1/3 h-3 rounded-full dark:bg-white/10 bg-black/10" />

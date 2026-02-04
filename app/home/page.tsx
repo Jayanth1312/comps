@@ -1,15 +1,51 @@
 "use client";
 
+import React from "react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import Fuse from "fuse.js";
 import LibrariesGrid from "../../components/libraries-grid";
 import LightRays from "@/components/LightRays";
 import ThemeToggle from "../components/theme-toggle";
-import { Stars, ArrowRight } from "@solar-icons/react";
-import { motion } from "framer-motion";
+import { COMPONENTS } from "@/types/component-data";
+import {
+  Stars,
+  ArrowRight,
+  Command,
+  MinimalisticMagnifer,
+} from "@solar-icons/react";
 
 export default function HomePage() {
   const [isDark, setIsDark] = useState(true);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  const fuse = new Fuse(COMPONENTS, {
+    keys: ["name", "slug", "description"],
+    threshold: 0.3,
+    distance: 100,
+  });
+
+  const filteredResults =
+    searchQuery.trim().length > 0
+      ? fuse.search(searchQuery).map((result) => result.item)
+      : [];
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -29,8 +65,80 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary/20">
-      {/* Theme Toggle */}
-      <div className="fixed top-6 right-6 z-50">
+      {/* Searchbar and Theme Toggle */}
+      <div className="fixed top-6 right-4 z-50 flex gap-2">
+        <div className="relative flex-1">
+          <AnimatePresence>
+            {searchFocused && filteredResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                className="absolute top-full left-0 right-0 mt-3 dark:bg-black/20 bg-white/20 backdrop-blur-md border border-border/50 rounded-xl overflow-hidden shadow-2xl z-50 max-h-[400px] flex flex-col"
+              >
+                <div className="text-[10px] font-bold text-muted-foreground/50 px-3 py-1.5 uppercase tracking-wider shrink-0">
+                  Components ({filteredResults.length})
+                </div>
+                <div className="overflow-y-auto p-1.5 pt-0">
+                  {filteredResults.map((result) => (
+                    <button
+                      key={result.slug}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 rounded-lg transition-colors text-left group cursor-pointer"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        router.push(`/compare/${result.slug}`);
+                        setSearchQuery("");
+                        setSearchFocused(false);
+                      }}
+                    >
+                      <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                        <Stars
+                          size={18}
+                          className="text-muted-foreground group-hover:text-primary transition-colors"
+                          weight="BoldDuotone"
+                        />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold">
+                          {result.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground line-clamp-1">
+                          {result.description}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div
+            className={`flex items-center w-full px-3 md:px-4 py-2 md:py-2.5 rounded-md bg-muted/20 backdrop-blur-sm border border-border/50 transition-all duration-300 ${
+              searchFocused ? "ring-2 ring-primary/20" : ""
+            }`}
+          >
+            <MinimalisticMagnifer
+              weight="BoldDuotone"
+              size={20}
+              className="text-muted-foreground shrink-0"
+              strokeWidth={2}
+            />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input focus:outline-none bg-transparent ml-3 w-full text-[15px] placeholder:text-[15px] font-medium"
+              placeholder="Search Components"
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+            />
+            <kbd className="bg-muted/20 backdrop-blur-xs border border-border/50 rounded-[5px] px-2 font-normal ml-2 md:ml-3 hidden sm:flex items-center gap-1 shrink-0">
+              <Command weight="BoldDuotone" size={12} />K
+            </kbd>
+          </div>
+        </div>
         <ThemeToggle />
       </div>
 

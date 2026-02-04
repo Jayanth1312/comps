@@ -27,10 +27,10 @@ export default function ComponentCard({
     <div className={`component-card relative group ${className}`}>
       {/* Favorite icon - top right */}
       <button
-        className={`absolute top-3 right-3 z-10 action-button favorite-button shadow-sm transition-all duration-300 ${
+        className={`absolute top-3 right-3 z-10 action-button favorite-button transition-all duration-300 ${
           isFavorite
             ? "active opacity-100"
-            : "opacity-0 group-hover:opacity-100"
+            : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
         }`}
         aria-label="Add to favorites"
         onClick={(e) => {
