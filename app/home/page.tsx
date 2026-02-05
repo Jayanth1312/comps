@@ -15,12 +15,17 @@ import {
   ArrowRight,
   Command,
   MinimalisticMagnifer,
+  Sledgehammer,
+  SimCard,
 } from "@solar-icons/react";
+
+import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   const [isDark, setIsDark] = useState(true);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -36,6 +41,10 @@ export default function HomePage() {
       : [];
 
   useEffect(() => {
+    setActiveIndex(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
@@ -46,6 +55,31 @@ export default function HomePage() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (filteredResults.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % filteredResults.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) =>
+        prev === 0 ? filteredResults.length - 1 : prev - 1,
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const selectedItem = filteredResults[activeIndex];
+      if (selectedItem) {
+        router.push(`/compare/${selectedItem.slug}`);
+        setSearchQuery("");
+        setSearchFocused(false);
+      }
+    } else if (e.key === "Escape") {
+      setSearchFocused(false);
+      searchInputRef.current?.blur();
+    }
+  };
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -80,10 +114,16 @@ export default function HomePage() {
                   Components ({filteredResults.length})
                 </div>
                 <div className="overflow-y-auto p-1.5 pt-0">
-                  {filteredResults.map((result) => (
+                  {filteredResults.map((result, index) => (
                     <button
                       key={result.slug}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 rounded-lg transition-colors text-left group cursor-pointer"
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left group cursor-pointer border border-transparent",
+                        index === activeIndex
+                          ? "bg-muted/80 border-primary/20 shadow-sm"
+                          : "hover:bg-muted/50",
+                      )}
+                      onMouseEnter={() => setActiveIndex(index)}
                       onMouseDown={(e) => {
                         e.preventDefault();
                         router.push(`/compare/${result.slug}`);
@@ -91,10 +131,22 @@ export default function HomePage() {
                         setSearchFocused(false);
                       }}
                     >
-                      <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-                        <Stars
+                      <div
+                        className={cn(
+                          "w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0 transition-colors",
+                          index === activeIndex
+                            ? "bg-background text-primary"
+                            : "group-hover:bg-primary/10",
+                        )}
+                      >
+                        <SimCard
                           size={18}
-                          className="text-muted-foreground group-hover:text-primary transition-colors"
+                          className={cn(
+                            "transition-colors",
+                            index === activeIndex
+                              ? "text-primary"
+                              : "text-muted-foreground group-hover:text-primary",
+                          )}
                           weight="BoldDuotone"
                         />
                       </div>
@@ -114,8 +166,8 @@ export default function HomePage() {
           </AnimatePresence>
 
           <div
-            className={`flex items-center w-full px-3 md:px-4 py-2 md:py-2.5 rounded-md bg-muted/20 backdrop-blur-sm border border-border/50 transition-all duration-300 ${
-              searchFocused ? "ring-2 ring-primary/20" : ""
+            className={`flex items-center w-full px-3 md:px-4 py-3 md:py-2.5 rounded-md bg-muted/20 backdrop-blur-sm border border-border/50 transition-all duration-300 ${
+              searchFocused ? "ring-2 ring-foreground/20" : ""
             }`}
           >
             <MinimalisticMagnifer
@@ -129,6 +181,7 @@ export default function HomePage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleInputKeyDown}
               className="search-input focus:outline-none bg-transparent ml-3 w-full text-[15px] placeholder:text-[15px] font-medium"
               placeholder="Search Components"
               onFocus={() => setSearchFocused(true)}
@@ -139,6 +192,7 @@ export default function HomePage() {
             </kbd>
           </div>
         </div>
+
         <ThemeToggle />
       </div>
 
@@ -173,23 +227,33 @@ export default function HomePage() {
 
           {/* Title */}
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6 max-w-4xl mx-auto">
-            Component Library Comparison
+            Compare & Build React UIs Faster
           </h1>
 
           {/* Subtitle */}
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Compare UI components across 6 popular libraries side-by-side with
-            our interactive playground.
+            See real components from 6 top libraries side-by-side. Then switch
+            to our builder to create, customize, and export your desired
+            component.
           </p>
 
           {/* CTA Link */}
-          <Link
-            href="/explore"
-            className="group inline-flex items-center gap-2 px-8 py-3.5 bg-foreground text-background rounded-lg font-medium transition-all hover:scale-105 hover:shadow-lg hover:shadow-primary/20"
-          >
-            Compare Components
-            <ArrowRight weight="BoldDuotone" />
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link
+              href="/builder"
+              className="group inline-flex items-center gap-2 px-6 py-4 bg-foreground text-background rounded-lg font-medium transition-all hover:scale-105"
+            >
+              <Sledgehammer weight="BoldDuotone" size={20} />
+              <span>Builder</span>
+            </Link>
+            <Link
+              href="/explore"
+              className="group inline-flex items-center gap-2 px-6 py-4 bg-transparent text-foreground border border-foreground rounded-lg font-medium transition-all hover:scale-105"
+            >
+              Components
+              <ArrowRight weight="BoldDuotone" />
+            </Link>
+          </div>
         </div>
 
         {/* Gradient Overlay for smooth transition to next section */}

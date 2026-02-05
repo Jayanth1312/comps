@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Compare UI components across different libraries",
 };
 
+import { UIProviders } from "@/components/ui-providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,7 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${outfit.className} antialiased`}>{children}</body>
+      <body className={`${outfit.className} antialiased`}>
+        <UIProviders>{children}</UIProviders>
+      </body>
     </html>
   );
 }

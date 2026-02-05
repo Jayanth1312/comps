@@ -4,35 +4,47 @@ import React, { useState, useEffect } from "react";
 import {
   MinimalisticMagnifer,
   SortVertical,
-  SortByAlphabet,
+  SortFromTopToBottom,
+  SortFromBottomToTop,
   GraphNewUp,
   Command,
-  Stars,
   Heart,
+  Sledgehammer,
+  SimCard,
 } from "@solar-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "./theme-toggle";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { COMPONENTS } from "@/types/component-data";
 import Fuse from "fuse.js";
+import { useSortContext } from "@/contexts/sort-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "./dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   visible?: boolean;
+  showSort?: boolean;
+  showBuilder?: boolean;
 }
 
-export default function Header({ visible = true }: HeaderProps) {
+export default function Header({
+  visible = true,
+  showSort = true,
+  showBuilder = false,
+}: HeaderProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { setSortBy } = useSortContext();
 
   const fuse = new Fuse(COMPONENTS, {
     keys: ["name", "slug", "description"],
@@ -46,6 +58,10 @@ export default function Header({ visible = true }: HeaderProps) {
       : [];
 
   useEffect(() => {
+    setActiveIndex(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
@@ -56,6 +72,31 @@ export default function Header({ visible = true }: HeaderProps) {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (filteredResults.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % filteredResults.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) =>
+        prev === 0 ? filteredResults.length - 1 : prev - 1,
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const selectedItem = filteredResults[activeIndex];
+      if (selectedItem) {
+        router.push(`/compare/${selectedItem.slug}`);
+        setSearchQuery("");
+        setSearchFocused(false);
+      }
+    } else if (e.key === "Escape") {
+      setSearchFocused(false);
+      searchInputRef.current?.blur();
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -95,10 +136,16 @@ export default function Header({ visible = true }: HeaderProps) {
                         Components ({filteredResults.length})
                       </div>
                       <div className="overflow-y-auto p-1.5 pt-0">
-                        {filteredResults.map((result) => (
+                        {filteredResults.map((result, index) => (
                           <button
                             key={result.slug}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 rounded-lg transition-colors text-left group"
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left group cursor-pointer border border-transparent",
+                              index === activeIndex
+                                ? "bg-muted/80 border-primary/20 shadow-sm"
+                                : "hover:bg-muted/50",
+                            )}
+                            onMouseEnter={() => setActiveIndex(index)}
                             onMouseDown={(e) => {
                               e.preventDefault();
                               router.push(`/compare/${result.slug}`);
@@ -106,10 +153,22 @@ export default function Header({ visible = true }: HeaderProps) {
                               setSearchFocused(false);
                             }}
                           >
-                            <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-                              <Stars
+                            <div
+                              className={cn(
+                                "w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0 transition-colors",
+                                index === activeIndex
+                                  ? "bg-background text-primary"
+                                  : "group-hover:text-foreground",
+                              )}
+                            >
+                              <SimCard
                                 size={18}
-                                className="text-muted-foreground group-hover:text-primary transition-colors"
+                                className={cn(
+                                  "transition-colors",
+                                  index === activeIndex
+                                    ? "text-primary"
+                                    : "text-muted-foreground group-hover:text-foreground",
+                                )}
                                 weight="BoldDuotone"
                               />
                             </div>
@@ -129,8 +188,8 @@ export default function Header({ visible = true }: HeaderProps) {
                 </AnimatePresence>
 
                 <div
-                  className={`flex items-center w-full px-3 md:px-4 py-2 md:py-2.5 rounded-md bg-muted/20 backdrop-blur-sm border border-border/50 transition-all duration-300 ${
-                    searchFocused ? "ring-2 ring-primary/20" : ""
+                  className={`flex items-center w-full px-3 md:px-4 py-3 md:py-3 rounded-md bg-muted/20 backdrop-blur-sm border border-border/50 transition-all duration-300 ${
+                    searchFocused ? "ring-2 ring-foreground/20" : ""
                   }`}
                 >
                   <MinimalisticMagnifer
@@ -144,6 +203,7 @@ export default function Header({ visible = true }: HeaderProps) {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
                     className="search-input focus:outline-none bg-transparent ml-3 w-full text-[15px] placeholder:text-[15px] font-medium"
                     placeholder="Search Components"
                     onFocus={() => setSearchFocused(true)}
@@ -156,40 +216,74 @@ export default function Header({ visible = true }: HeaderProps) {
               </div>
 
               {/* Sort Dropdown */}
-              <div className="bg-muted/20 backdrop-blur-sm border border-border/50 rounded-md">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="h-full px-4 border-none bg-transparent hover:bg-transparent header-button rounded-md gap-2 font-medium text-[15px]"
+              {showSort && (
+                <div className="bg-muted/20 backdrop-blur-sm border border-border/50 rounded-md">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="h-full px-4 border-none bg-transparent cursor-pointer rounded-md gap-2 font-medium text-[15px] flex items-center hover:bg-muted/30 transition-colors text-foreground">
+                        <SortVertical weight="BoldDuotone" size={20} />
+                        <span className="hidden sm:inline">Sort</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      side="top"
+                      sideOffset={8}
+                      className="dropdown-content w-48"
                     >
-                      <SortVertical weight="BoldDuotone" size={20} />
-                      <span className="hidden sm:inline">Sort</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    side="top"
-                    sideOffset={8}
-                    className="dropdown-content w-48"
-                  >
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem className="gap-2 cursor-pointer py-2.5">
-                        <SortByAlphabet size={20} weight="BoldDuotone" />
-                        <span className="font-medium">Alphabetical</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2 cursor-pointer py-2.5">
-                        <GraphNewUp size={20} weight="BoldDuotone" />
-                        <span className="font-medium">By Popularity</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2 cursor-pointer py-2.5">
-                        <Heart size={20} weight="BoldDuotone" />
-                        <span className="font-medium">Favourites</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer py-2.5"
+                          onClick={() => setSortBy("a-z")}
+                        >
+                          <SortFromTopToBottom size={20} weight="BoldDuotone" />
+                          <span className="font-medium">A-Z</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer py-2.5"
+                          onClick={() => setSortBy("z-a")}
+                        >
+                          <SortFromBottomToTop size={20} weight="BoldDuotone" />
+                          <span className="font-medium">Z-A</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer py-2.5"
+                          onClick={() => setSortBy("popularity")}
+                        >
+                          <GraphNewUp
+                            size={20}
+                            weight="BoldDuotone"
+                            className="text-blue-400"
+                          />
+                          <span className="font-medium">By Popularity</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer py-2.5"
+                          onClick={() => setSortBy("favorites")}
+                        >
+                          <Heart
+                            size={20}
+                            weight="Bold"
+                            className="text-red-500"
+                          />
+                          <span className="font-medium">Favourites</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+
+              {/* Builder Button */}
+              {showBuilder && (
+                <Link
+                  href="/builder"
+                  className="bg-neutral-900 dark:bg-neutral-50 text-neutral-50 dark:text-neutral-900 border border-border/50 hover:opacity-90 transition-all duration-300 font-normal px-3 md:px-4 py-3 md:py-3 rounded-md flex items-center justify-center cursor-pointer active:scale-[0.98] gap-2 pointer-events-auto"
+                >
+                  <Sledgehammer weight="BoldDuotone" size={20} />
+                  <span className="text-[15px] hidden md:inline">Builder</span>
+                </Link>
+              )}
 
               {/* Theme Toggle */}
               <ThemeToggle />

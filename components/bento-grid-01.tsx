@@ -3,8 +3,48 @@
 import { motion } from "framer-motion";
 import { COMPONENTS } from "@/types/component-data";
 import ComponentCard from "@/app/components/component-card";
+import { useSortContext } from "@/contexts/sort-context";
+import { useMemo } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "@solar-icons/react";
+import {
+  getOptimizedLayout,
+  shouldUseOriginalLayout,
+} from "@/lib/layout-optimizer";
 
 function FeaturesSection() {
+  const { sortBy, componentStats } = useSortContext();
+
+  const sortedComponents = useMemo(() => {
+    const componentsWithStats = COMPONENTS.map((comp) => ({
+      ...comp,
+      likes: componentStats[comp.slug]?.likes || 0,
+      isFavorite: componentStats[comp.slug]?.isFavorite || false,
+    }));
+
+    switch (sortBy) {
+      case "a-z":
+        return [...componentsWithStats].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
+      case "z-a":
+        return [...componentsWithStats].sort((a, b) =>
+          b.name.localeCompare(a.name),
+        );
+      case "popularity":
+        return [...componentsWithStats].sort((a, b) => b.likes - a.likes);
+      case "favorites":
+        return [...componentsWithStats].sort((a, b) => {
+          if (a.isFavorite === b.isFavorite) {
+            return a.name.localeCompare(b.name);
+          }
+          return a.isFavorite ? -1 : 1;
+        });
+      default:
+        return componentsWithStats;
+    }
+  }, [sortBy, componentStats]);
+
   const getItemConfig = (component: (typeof COMPONENTS)[0], index: number) => {
     const colSpans: { [key: number]: string } = {
       1: "md:col-span-1",
@@ -30,23 +70,36 @@ function FeaturesSection() {
       6: "md:row-span-6",
     };
 
+    // Use optimized layout based on sort type
+    let cols = component.cols;
+    let rows = component.rows;
+
+    if (!shouldUseOriginalLayout(sortBy)) {
+      const optimizedLayout = getOptimizedLayout(
+        index,
+        sortBy,
+        sortedComponents.length,
+      );
+      cols = optimizedLayout.cols;
+      rows = optimizedLayout.rows;
+    }
+
     return {
-      className: `${colSpans[component.cols] || "md:col-span-1"} ${rowSpans[component.rows] || "md:row-span-1"}`,
+      className: `${colSpans[cols] || "md:col-span-1"} ${rowSpans[rows] || "md:row-span-1"}`,
       delay: 0.05 * (index % 10),
     };
   };
 
   return (
-    <section className="bg-background px-0 md:px-6 pt-16 md:pt-24 min-h-screen">
+    <section className="bg-background px-0 md:px-6 pt-16 md:pt-16 min-h-screen">
       <div className="max-w-7xl w-full mx-auto">
-        {/* <motion.h1
-          className="text-muted-foreground text-sm uppercase tracking-widest mb-12 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+        <Link
+          href="/home"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
-          Explore Components
-        </motion.h1> */}
+          <ArrowLeft size={20} weight="BoldDuotone" />
+          <span>Back to home</span>
+        </Link>
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -66,7 +119,7 @@ function FeaturesSection() {
 
         {/* Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-min md:auto-rows-[100px] grid-flow-dense pb-40">
-          {COMPONENTS.map((component, index) => {
+          {sortedComponents.map((component, index) => {
             const config = getItemConfig(component, index);
 
             return (
@@ -74,8 +127,7 @@ function FeaturesSection() {
                 key={component.slug}
                 className={`${config.className} rounded-xl overflow-hidden cursor-pointer`}
                 initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: config.delay }}
                 whileHover={{ scale: 1.02, zIndex: 10 }}
               >

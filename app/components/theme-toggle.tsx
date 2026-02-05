@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Sun2, MoonStars } from "@solar-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -60,14 +60,14 @@ export default function ThemeToggle() {
           {isDark ? (
             <Sun2
               weight="BoldDuotone"
-              size={22}
-              className="group-hover:text-amber-400 transition-colors"
+              size={20}
+              className="text-amber-400 transition-colors"
             />
           ) : (
             <MoonStars
               weight="BoldDuotone"
-              size={22}
-              className="group-hover:text-blue-600 transition-colors"
+              size={20}
+              className="text-blue-600 transition-colors"
             />
           )}
         </motion.div>

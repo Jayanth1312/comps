@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* DaisyUI plugin with cupcake theme for consistent styling */
+@plugin "daisyui" {
+  themes: light, dark, cupcake;
+  logs: false;
+}
+
+/* Include react-daisyui package in Tailwind content scanning */
+@source "../node_modules/react-daisyui/dist";
+
+/* Safelist DaisyUI component classes used by react-daisyui */
+@source "./daisyui-safelist.txt";
+
+/*
+ * Note: Mantine styles are now loaded dynamically by MantineProvider
+ * with scoped CSS variables (cssVariablesSelector=".library-preview-container")
+ * This prevents global style bleeding.
+ */

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@plugin "daisyui";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -56,6 +55,84 @@ body {
   transition:
     background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Protect from library CSS resets */
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Override any library CSS that tries to change html/body background */
+html,
+html body {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Scope library component previews - let them have their own styles inside */
+.library-preview-container {
+  /* Create isolated rendering context */
+  isolation: isolate;
+  contain: layout;
+  position: relative;
+  /* Ensure it takes full space */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  /* Prevent library background colors from bleeding out - but don't use !important to avoid FOUC */
+  background: transparent;
+}
+
+/* Wrapper for library components - prevents style bleeding */
+.library-components-wrapper {
+  isolation: isolate;
+  contain: layout;
+  position: relative;
+  /* Create a new stacking context */
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Ensure minimum dimensions */
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Protect the main application from library CSS resets */
+.component-card {
+  /* Ensure card styles are preserved */
+  box-sizing: border-box;
+  /* Protect card background and colors with high specificity */
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+html,
+html body,
+body {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  /* Prevent Mantine and other libraries from overriding these */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Prevent any library from changing the root element styles */
+:root {
+  background-color: var(--background) !important;
+}
+
+/* Ensure main content areas maintain app styling */
+main,
+.container {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* Scope Mantine CSS variables to prevent global override */
+.mantine-provider-scope {
+  /* Mantine variables are scoped here instead of :root */
+  isolation: isolate;
 }
 
 /* Ensure the floating header doesn't block pointer events on the page except on its interactive children */
@@ -83,7 +160,7 @@ header > div {
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
+  --border: #e5e5e5;
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
@@ -148,7 +225,7 @@ header > div {
   }
 }
 
-/* Theme attribute – used by the header toggle */
+/* Theme attribute â€“ used by the header toggle */
 /* These rules must come AFTER :root and .dark to have higher cascade priority */
 [data-theme="dark"] {
   --background: oklch(0.145 0 0);
@@ -246,15 +323,6 @@ header > div {
   opacity: 1 !important;
 }
 
-.header-button {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.header-button:hover {
-  background: var(--header-hover);
-  transform: translateY(-1px);
-}
-
 .header-button:active {
   transform: translateY(0);
 }
@@ -323,14 +391,15 @@ header > div {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  padding: 0.75rem;
   display: flex;
   flex-direction: column;
   transition: all 0.2s ease;
+  cursor: pointer;
+  overflow: hidden;
 }
 
 .component-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--border);
 }
 
 .card-preview {
@@ -357,9 +426,10 @@ header > div {
 }
 
 .card-title {
-  font-size: 18px;
-  font-weight: 400;
+  font-size: 16px;
+  font-weight: 500;
   color: var(--foreground);
+  line-height: 1.2;
 }
 
 .card-actions {
@@ -373,8 +443,8 @@ header > div {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 0.5rem;
-  min-height: 2.5rem;
-  min-width: 2.5rem;
+  min-height: 2.25rem;
+  min-width: 2.25rem;
   color: var(--muted-foreground);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -402,14 +472,14 @@ header > div {
   display: flex;
   align-items: center;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
   overflow: hidden;
-  background: transparent;
+  background: var(--card);
 }
 
 .vote-group .vote-button {
   border: none;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.625rem;
+  min-height: 2.25rem;
 }
 
 /* Comparison Page Styles */
@@ -517,9 +587,7 @@ header > div {
 .code-block {
   padding: 1.25rem;
   background: var(--background);
-  font-family:
-    ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.6;
   overflow-x: auto;
@@ -566,4 +634,73 @@ header > div {
 
 .fade-in {
   animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.shadcn-theme-root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+}
+
+:is(.dark .shadcn-theme-root),
+:is([data-theme="dark"] .shadcn-theme-root) {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+}
+
+/* Background patterns */
+.checkerboard-bg {
+  background-color: var(--background);
+  background-image:
+    linear-gradient(45deg, #8080801a 25%, transparent 25%),
+    linear-gradient(-45deg, #8080801a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #8080801a 75%),
+    linear-gradient(-45deg, transparent 75%, #8080801a 75%);
+  background-size: 20px 20px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
 }

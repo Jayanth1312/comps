@@ -9,7 +9,6 @@ export type ComponentSlug =
   | "slider"
   | "accordion"
   | "alert"
-  | "calendar"
   | "dialog"
   | "pagination"
   | "popover"
@@ -18,7 +17,8 @@ export type ComponentSlug =
   | "tooltip"
   | "table"
   | "skeleton"
-  | "command";
+  | "select"
+  | "dropdown-menu"
 
 export interface ComponentInfo {
   name: string;
@@ -203,14 +203,6 @@ export const COMPONENTS: ComponentInfo[] = [
     rows: 4,
   },
   {
-    name: "Calendar",
-    description: "Date picker and calendar view component",
-    slug: "calendar",
-    icon: "Calendar",
-    cols: 6,
-    rows: 4,
-  },
-  {
     name: "Pagination",
     description: "Navigation controls for paginated content",
     slug: "pagination",
@@ -267,12 +259,20 @@ export const COMPONENTS: ComponentInfo[] = [
     rows: 4,
   },
   {
-    name: "Command",
-    description: "Fast, keyboard-driven command menu interface",
-    slug: "command",
-    icon: "Command",
+    name: "Select",
+    description: "Input control for selecting an option from a list",
+    slug: "select",
+    icon: "ChevronDown",
     cols: 3,
-    rows: 4,
+    rows: 2,
+  },
+  {
+    name: "Dropdown Menu",
+    description: "Floating menu for displaying a list of actions or options",
+    slug: "dropdown-menu",
+    icon: "Menu",
+    cols: 3,
+    rows: 2,
   },
   {
     name: "Dialog",
