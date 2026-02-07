@@ -173,8 +173,8 @@ export default function CodeExpansionPanel({
   };
 
   const handleDownload = () => {
-    if (codeBlock && currentCode) {
-      const { language } = codeBlock;
+    if (currentCode) {
+      const language = currentVariant.language;
       const blob = new Blob([currentCode], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -200,7 +200,7 @@ export default function CodeExpansionPanel({
 
   return (
     <AnimatePresence>
-      {isOpen && codeBlock && (
+      {isOpen && (
         <motion.div
           initial={{ x: "100%" }}
           animate={{ x: 0 }}
@@ -211,7 +211,7 @@ export default function CodeExpansionPanel({
               : { type: "spring", damping: 30, stiffness: 300 }
           }
           className={cn(
-            "fixed right-0 top-0 bottom-0 bg-background border-l border-border flex flex-col z-50",
+            "fixed right-0 top-0 bottom-0 bg-background border-l border-border flex flex-col z-100 shadow-2xl",
             isFullScreen ? "w-full min-w-0" : "min-w-[520px]",
           )}
           style={{ width: isFullScreen ? "100%" : width }}
@@ -324,7 +324,7 @@ export default function CodeExpansionPanel({
                   <span className="text-foreground">Page</span>
                   <span className="text-muted-foreground/40">•</span>
                   <span className="text-muted-foreground uppercase">
-                    {codeBlock.language}
+                    {currentVariant.language}
                   </span>
                 </div>
               </div>
@@ -350,10 +350,13 @@ export default function CodeExpansionPanel({
                 </TooltipProvider>
               )}
 
-              <div className="flex items-center bg-muted/30 rounded-md border border-border/50 overflow-hidden h-10">
+              <div className="flex items-center bg-muted/80 rounded-md border border-border/50 overflow-hidden h-10 shadow-sm">
                 <button
-                  onClick={handleCopy}
-                  className="flex items-center gap-2 px-4 h-full hover:bg-muted/50 transition-all text-sm font-medium cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleCopy();
+                  }}
+                  className="flex items-center gap-2 px-4 h-full hover:bg-muted transition-all text-sm font-semibold cursor-pointer"
                 >
                   {copied ? (
                     <>
@@ -375,14 +378,17 @@ export default function CodeExpansionPanel({
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="px-2.5 h-full hover:bg-muted/50 transition-all cursor-pointer flex items-center justify-center">
+                    <button className="px-2.5 h-full hover:bg-muted transition-all cursor-pointer flex items-center justify-center border-l border-border/50">
                       <ChevronDown
                         size={16}
                         className="text-muted-foreground"
                       />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-40 bg-muted/95 backdrop-blur-xl z-150"
+                  >
                     <DropdownMenuItem
                       onClick={handleDownload}
                       className="cursor-pointer"
@@ -406,10 +412,10 @@ export default function CodeExpansionPanel({
                 </DropdownMenu>
               </div>
               {variants.length > 0 && (
-                <div className="flex items-center bg-muted/30 rounded-md border border-border/50 overflow-hidden h-10">
+                <div className="flex items-center bg-muted/80 rounded-md border border-border/50 overflow-hidden h-10 shadow-sm">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-2 px-3 h-full hover:bg-muted/50 transition-all text-sm font-medium cursor-pointer">
+                      <button className="flex items-center gap-2 px-4 h-full hover:bg-muted transition-all text-sm font-semibold cursor-pointer">
                         <span className="capitalize">{selectedLibrary}</span>
                         <ChevronDown
                           size={14}
@@ -417,16 +423,19 @@ export default function CodeExpansionPanel({
                         />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 p-1">
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-48 p-1.5 bg-muted/95 backdrop-blur-xl z-150"
+                    >
                       {sortedVariants.map((v) => (
                         <DropdownMenuItem
                           key={v.library}
-                          onClick={() => handleLibraryChange(v.library)}
+                          onSelect={() => handleLibraryChange(v.library)}
                           className={cn(
                             "cursor-pointer capitalize text-sm",
                             selectedLibrary.toLowerCase() ===
                               v.library.toLowerCase() &&
-                              "bg-muted font-bold text-primary",
+                              "bg-primary/10 font-bold text-primary",
                           )}
                         >
                           {v.library}

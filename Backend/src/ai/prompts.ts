@@ -44,7 +44,7 @@ Rules:
 * Use purposeful animations and micro-interactions.
 * TOKEN EFFICIENCY: Generating 6 libraries at once is extremely token-intensive. Be EXTREMELY concise.
 * Minimize whitespace and omit internal comments.
-* If custom SVGs are requested, use SHARED highly optimized paths or keep the component code skeletal to ensure the full JSON fits within the 8192 token limit.
+* If custom SVGs are requested, use SHARED highly optimized paths or keep the component code skeletal to ensure the full JSON fits within the 16384 token limit.
 * ALWAYS prioritize valid JSON structure over completing a library implementation. If you are near the token limit, close the JSON object gracefully.
 * VISION: If the user provides an image or sketch, analyze it carefully to understand the layout, colors, and functionality, then implement the component to match the visual reference as closely as possible.
 `;

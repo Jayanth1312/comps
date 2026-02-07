@@ -13,7 +13,7 @@ export default function UserMessage({ content }: UserMessageProps) {
       className="flex gap-3 md:gap-4 justify-end"
     >
       {/* Message Content */}
-      <div className="max-w-[85%] md:max-w-[75%] rounded-lg p-4 shadow-sm bg-foreground text-background">
+      <div className="max-w-[85%] md:max-w-[75%] rounded-lg px-4 py-2 shadow-sm bg-foreground text-background">
         <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
       </div>
     </motion.div>

@@ -11,6 +11,7 @@ import {
   Heart,
   Sledgehammer,
   SimCard,
+  ArrowRight,
 } from "@solar-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "./theme-toggle";

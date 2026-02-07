@@ -3,7 +3,7 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Fuse from "fuse.js";
 import LibrariesGrid from "../../components/libraries-grid";
@@ -17,7 +17,10 @@ import {
   MinimalisticMagnifer,
   Sledgehammer,
   SimCard,
+  Login,
+  Logout,
 } from "@solar-icons/react";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { cn } from "@/lib/utils";
 
@@ -28,6 +31,8 @@ export default function HomePage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   const fuse = new Fuse(COMPONENTS, {
     keys: ["name", "slug", "description"],
@@ -191,6 +196,28 @@ export default function HomePage() {
               <Command weight="BoldDuotone" size={12} />K
             </kbd>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {user ? (
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <Logout weight="BoldDuotone" size={18} />
+              <span>Logout</span>
+            </button>
+          ) : (
+            <>
+              <Link
+                href={`/login?redirect=${encodeURIComponent(pathname)}`}
+                className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-2xl text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <Login weight="BoldDuotone" size={18} />
+                <span>Login</span>
+              </Link>
+            </>
+          )}
         </div>
 
         <ThemeToggle />

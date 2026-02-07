@@ -6,7 +6,7 @@ const generateRoute = new Hono();
 generateRoute.post("/", async (c) => {
   try {
     const body = await c.req.json();
-    const { prompt, sessionId, images } = body;
+    const { prompt, sessionId, images, userId } = body;
 
     if (!prompt) {
       return c.json({ error: "Prompt is required" }, 400);
@@ -15,7 +15,12 @@ generateRoute.post("/", async (c) => {
     // Default session ID if not provided
     const sid = sessionId || "default-session";
 
-    const result = await orchestrator.generateComponent(prompt, sid, images);
+    const result = await orchestrator.generateComponent(
+      prompt,
+      sid,
+      images,
+      userId,
+    );
 
     return c.json(result);
   } catch (error) {

@@ -110,7 +110,7 @@ export default function CodeCard({
       {/* Header */}
       <div className="flex items-center justify-between gap-3 p-4 border-b border-border/40 bg-muted/10">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
             <Code weight="BoldDuotone" size={18} />
           </div>
           <div className="flex flex-col min-w-0">
@@ -120,7 +120,7 @@ export default function CodeCard({
             <div className="text-xs text-muted-foreground flex items-center">
               <span>Code</span>
               <Dot />
-              <span>{currentVariant.language.toUpperCase()}</span>
+              <span>{(currentVariant.language || "tsx").toUpperCase()}</span>
             </div>
           </div>
         </div>

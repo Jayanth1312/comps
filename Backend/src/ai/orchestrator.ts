@@ -9,6 +9,7 @@ import { RunnableWithMessageHistory } from "@langchain/core/runnables";
 import { SYSTEM_PROMPT } from "./prompts";
 import { z } from "zod";
 import { shadcnClient } from "../mcp/client";
+import { ChatSession } from "../models/ChatSession";
 
 const ComponentCodeSchema = z.object({
   library: z.string(),
@@ -33,7 +34,7 @@ export class GeminiOrchestrator {
   constructor() {
     this.model = new ChatGoogleGenerativeAI({
       model: "gemini-2.5-flash",
-      maxOutputTokens: 8192,
+      maxOutputTokens: 16384,
       apiKey: process.env.GEMINI_API_KEY,
       // @ts-ignore
       modelKwargs: {
@@ -72,10 +73,47 @@ export class GeminiOrchestrator {
     prompt: string,
     sessionId: string,
     images?: string[], // Base64 strings or URLs
+    userId?: string, // Optional userId for persistent storage
   ): Promise<{
     message: string;
     variants: z.infer<typeof ComponentCodeSchema>[];
   }> {
+    // 1. Generate/Retrieve Title if it's a new session
+    let session = await ChatSession.findOne({ chatSessionId: sessionId });
+    let isNewSession = !session;
+
+    if (isNewSession && userId) {
+      // Find a title based on the prompt (simplified title generation)
+      const titlePrompt = `Generate a very short (2-4 words) descriptive title for this UI component request: "${prompt}". Respond ONLY with the title.`;
+      const titleResult = await this.model.invoke(titlePrompt);
+      const title =
+        typeof titleResult === "string"
+          ? titleResult
+          : (titleResult as any).content || "New Component";
+
+      session = new ChatSession({
+        userId,
+        chatSessionId: sessionId,
+        title: title.replace(/["']/g, "").trim(),
+        messages: [],
+      });
+      await session.save();
+    }
+
+    // 2. Prepare user message for DB
+    const userMsg = {
+      role: "user" as const,
+      content: prompt,
+      type: "text" as const,
+      images,
+      timestamp: new Date(),
+    };
+
+    if (session) {
+      session.messages.push(userMsg);
+      await session.save();
+    }
+
     const promptTemplate = ChatPromptTemplate.fromMessages([
       ["system", SYSTEM_PROMPT],
       new MessagesPlaceholder("history"),
@@ -149,24 +187,69 @@ export class GeminiOrchestrator {
             "[Orchestrator] Parse failed, attempting truncation repair...",
           );
           try {
-            // Very basic truncation repair: find where it was cut off and close the JSON
             let repaired = cleanResult;
 
-            // If it ends in the middle of a string, close the string
-            const quoteCount = (repaired.match(/"/g) || []).length;
-            if (quoteCount % 2 !== 0) {
-              repaired += '"}';
+            // 1. Check if we are inside a string
+            let insideString = false;
+            let escaped = false;
+            for (let i = 0; i < repaired.length; i++) {
+              const char = repaired[i];
+              if (char === "\\" && !escaped) {
+                escaped = true;
+              } else if (char === '"' && !escaped) {
+                insideString = !insideString;
+                escaped = false;
+              } else {
+                escaped = false;
+              }
             }
 
-            // Count open vs closed braces and brackets
-            const openBraces = (repaired.match(/{/g) || []).length;
-            const closeBraces = (repaired.match(/}/g) || []).length;
-            const openBrackets = (repaired.match(/\[/g) || []).length;
-            const closeBrackets = (repaired.match(/\]/g) || []).length;
+            // If we're inside a string, we need to close it.
+            // But first, if it ends with a dangling backslash, remove it
+            if (insideString) {
+              if (repaired.endsWith("\\") && !repaired.endsWith("\\\\")) {
+                repaired = repaired.slice(0, -1);
+              }
+              repaired += '"';
+            }
 
-            for (let i = 0; i < openBraces - closeBraces; i++) repaired += "}";
-            for (let i = 0; i < openBrackets - closeBrackets; i++)
-              repaired += "]";
+            // 2. Count open vs closed braces and brackets
+            // Note: We should ideally only count those that are NOT inside strings
+            // for absolute accuracy, but this is a repair attempt.
+            const getCounts = (str: string) => {
+              let br = 0,
+                bk = 0,
+                qs = false,
+                es = false;
+              for (let i = 0; i < str.length; i++) {
+                const c = str[i];
+                if (es) {
+                  es = false;
+                  continue;
+                }
+                if (c === "\\") {
+                  es = true;
+                  continue;
+                }
+                if (c === '"') {
+                  qs = !qs;
+                  continue;
+                }
+                if (!qs) {
+                  if (c === "{") br++;
+                  if (c === "}") br--;
+                  if (c === "[") bk++;
+                  if (c === "]") bk--;
+                }
+              }
+              return { br, bk };
+            };
+
+            const counts = getCounts(repaired);
+
+            // Close any open structures
+            for (let i = 0; i < counts.br; i++) repaired += "}";
+            for (let i = 0; i < counts.bk; i++) repaired += "]";
 
             parsed = JSON.parse(repaired);
             console.log("[Orchestrator] Successfully repaired truncated JSON");
@@ -208,6 +291,18 @@ export class GeminiOrchestrator {
         const validatedVariants = z
           .array(ComponentCodeSchema)
           .parse(finalResult.variants);
+
+        // 3. Save AI message to DB
+        if (session) {
+          session.messages.push({
+            role: "ai",
+            content: finalResult.message,
+            type: "code",
+            codeVariants: validatedVariants,
+            timestamp: new Date(),
+          });
+          await session.save();
+        }
 
         return {
           message: finalResult.message,

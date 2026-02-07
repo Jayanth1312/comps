@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "@solar-icons/react";
+import Link from "next/link";
+import { ArrowLeft, Login, User, Logout, ChatLine } from "@solar-icons/react";
 import ThemeToggle from "@/app/components/theme-toggle";
+import { useAuth } from "@/contexts/AuthContext";
 import UserMessage from "@/app/components/UserMessage";
 import AIMessage from "@/app/components/AIMessage";
 import { cn } from "@/lib/utils";
@@ -11,6 +13,15 @@ import AIInput from "@/app/components/AIInput";
 import CodeCard from "@/app/components/CodeCard";
 import CodeExpansionPanel from "@/app/components/CodeExpansionPanel";
 import AITextLoading from "@/components/kokonutui/ai-text-loading";
+import HistoryDrawer from "../components/HistoryDrawer";
+import AuthRequiredDialog from "../components/AuthRequiredDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type MessageType = "text" | "code";
 
@@ -45,13 +56,18 @@ const INITIAL_MESSAGES: Message[] = [
 
 export default function BuilderPage() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<
     CodeVariant | undefined
   >(undefined);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Resize state
@@ -98,12 +114,63 @@ export default function BuilderPage() {
     };
   }, [isResizing, resize, stopResizing]);
 
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("builder_messages");
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        if (Array.isArray(parsed)) {
+          setMessages(
+            parsed.map((m: any) => ({
+              ...m,
+              id: String(m.id || m._id || Date.now().toString()),
+            })),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load saved messages:", error);
+      }
+    }
+
+    let savedSessionId = localStorage.getItem("chat_session_id");
+    if (!savedSessionId) {
+      savedSessionId = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem("chat_session_id", savedSessionId);
+    }
+    setChatSessionId(savedSessionId);
+
+    setMessagesLoaded(true);
+  }, []);
+
+  // Reset state on logout
+  useEffect(() => {
+    if (messagesLoaded && !user) {
+      setMessages(INITIAL_MESSAGES);
+      const newSessionId = Math.random().toString(36).substring(2, 15);
+      setChatSessionId(newSessionId);
+      setExpandedCode(null);
+      setSelectedVariant(undefined);
+    }
+  }, [user, messagesLoaded]);
+
+  // Save messages to localStorage on change
+  useEffect(() => {
+    if (messagesLoaded) {
+      localStorage.setItem("builder_messages", JSON.stringify(messages));
+    }
+  }, [messages, messagesLoaded]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSendMessage = async (text?: string, images?: string[]) => {
+    if (!user) {
+      setIsAuthDialogOpen(true);
+      return;
+    }
     const messageContent = text || inputValue;
     if (!messageContent.trim() && (!images || images.length === 0)) return;
 
@@ -125,8 +192,9 @@ export default function BuilderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: newMessage.content,
-          sessionId: "default-session",
+          sessionId: chatSessionId || "default-session",
           images: images || [],
+          userId: user?.id,
         }),
       });
 
@@ -221,8 +289,48 @@ export default function BuilderPage() {
     }
   };
 
+  const loadChatSession = async (sessionIdToLoad: string) => {
+    setIsLoading(true);
+    setIsHistoryOpen(false);
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/history/${sessionIdToLoad}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("sessionId")}`,
+          },
+        },
+      );
+      if (response.ok) {
+        const sessionData = await response.json();
+        // Restore messages with proper string IDs
+        const normalizedMessages = sessionData.messages.map((m: any) => ({
+          ...m,
+          id: String(m.id || m._id || Date.now().toString()),
+        }));
+        setMessages(normalizedMessages);
+        setChatSessionId(sessionIdToLoad);
+        localStorage.setItem("chat_session_id", sessionIdToLoad);
+        localStorage.setItem(
+          "builder_messages",
+          JSON.stringify(sessionData.messages),
+        );
+        setExpandedCode(null);
+        setSelectedVariant(undefined);
+      }
+    } catch (error) {
+      console.error("Failed to load session:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleNewChat = () => {
     setMessages(INITIAL_MESSAGES);
+    const newSessionId = Math.random().toString(36).substring(2, 15);
+    setChatSessionId(newSessionId);
+    localStorage.setItem("chat_session_id", newSessionId);
+    localStorage.removeItem("builder_messages");
     setInputValue("");
     setExpandedCode(null);
     setSelectedVariant(undefined);
@@ -239,7 +347,9 @@ export default function BuilderPage() {
     "code",
   );
 
-  const currentExpandedMessage = messages.find((m) => m.id === expandedCode);
+  const currentExpandedMessage = messages.find(
+    (m) => String(m.id || (m as any)._id) === String(expandedCode),
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground flex relative overflow-hidden">
@@ -258,12 +368,12 @@ export default function BuilderPage() {
           minWidth: expandedCode ? "480px" : "auto",
         }}
       >
-        {/* Header Elements (Absolute) */}
-        <div className="absolute top-0 left-0 w-full z-20 pointer-events-none p-4 md:p-6 flex justify-between items-start">
+        {/* Header Elements (Fixed) */}
+        <div className="fixed top-0 left-0 w-full z-40 pointer-events-none p-4 md:p-6 flex justify-between items-start transition-all">
           <div className="pointer-events-auto">
             <button
               onClick={() => router.back()}
-              className="p-3 bg-muted/20 backdrop-blur-sm border border-border/50 hover:bg-muted/30 transition-all rounded-md"
+              className="p-3 bg-muted/20 backdrop-blur-sm border border-border/50 hover:bg-muted/30 transition-all rounded-md cursor-pointer"
             >
               <ArrowLeft
                 weight="BoldDuotone"
@@ -273,8 +383,36 @@ export default function BuilderPage() {
             </button>
           </div>
 
-          {/* Theme Toggle */}
-          <div className="pointer-events-auto">
+          {/* Theme Toggle & Auth */}
+          <div className="pointer-events-auto flex items-center gap-2">
+            {user && (
+              <button
+                onClick={() => setIsHistoryOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 hover:bg-muted text-foreground rounded-md text-[14px] font-semibold transition-all cursor-pointer"
+              >
+                <ChatLine weight="BoldDuotone" size={18} />
+                <span className="hidden sm:inline">History</span>
+              </button>
+            )}
+            {user ? (
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <Logout weight="BoldDuotone" size={18} />
+                <span>Logout</span>
+              </button>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  <Login weight="BoldDuotone" size={18} />
+                  <span>Login</span>
+                </Link>
+              </>
+            )}
             <ThemeToggle />
           </div>
         </div>
@@ -282,14 +420,19 @@ export default function BuilderPage() {
         {/* Chat Area */}
         <main className="flex-1 overflow-y-auto pt-20 pb-56 scroll-smooth">
           <div className="max-w-3xl mx-auto px-4 md:px-6 space-y-6">
-            {messages.map((msg) => {
+            {messages.map((msg, index) => {
               if (msg.role === "user") {
-                return <UserMessage key={msg.id} content={msg.content} />;
+                return (
+                  <UserMessage
+                    key={`${msg.id}-${index}`}
+                    content={msg.content}
+                  />
+                );
               }
 
               if (msg.role === "ai") {
                 return (
-                  <AIMessage key={msg.id} content={msg.content}>
+                  <AIMessage key={`${msg.id}-${index}`} content={msg.content}>
                     {msg.codeVariants && msg.codeVariants.length > 0 && (
                       <div className="max-w-2xl">
                         <CodeCard
@@ -309,7 +452,10 @@ export default function BuilderPage() {
                       <CodeCard
                         language={msg.codeBlock.language}
                         code={msg.codeBlock.content}
-                        onExpand={() => setExpandedCode(msg.id)}
+                        onExpand={(variant) => {
+                          setExpandedCode(msg.id);
+                          setSelectedVariant(variant);
+                        }}
                       />
                     )}
                   </AIMessage>
@@ -388,7 +534,7 @@ export default function BuilderPage() {
         <div
           onMouseDown={startResizing}
           className={cn(
-            "fixed top-0 bottom-0 z-40 w-2 cursor-col-resize flex items-center justify-center",
+            "fixed top-0 bottom-0 z-110 w-2 cursor-col-resize flex items-center justify-center",
             isResizing && "bg-primary/30",
           )}
           style={{
@@ -403,6 +549,19 @@ export default function BuilderPage() {
           </div>
         </div>
       )}
+
+      {/* Auth Required Dialog */}
+      <AuthRequiredDialog
+        isOpen={isAuthDialogOpen}
+        onClose={() => setIsAuthDialogOpen(false)}
+      />
+
+      <HistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        onSelectSession={loadChatSession}
+        currentSessionId={chatSessionId}
+      />
     </div>
   );
 }

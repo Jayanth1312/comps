@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { UIProviders } from "@/components/ui-providers";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function RootLayout({
   children,
@@ -27,7 +28,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${outfit.className} antialiased`}>
-        <UIProviders>{children}</UIProviders>
+        <AuthProvider>
+          <UIProviders>{children}</UIProviders>
+        </AuthProvider>
       </body>
     </html>
   );

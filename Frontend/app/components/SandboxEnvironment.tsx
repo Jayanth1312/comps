@@ -10,7 +10,7 @@ import {
 } from "@codesandbox/sandpack-react";
 import { useTheme } from "next-themes";
 import React, { useMemo } from "react";
-import { atomDark, ecoLight } from "@codesandbox/sandpack-themes";
+import { ecoLight, gruvboxDark } from "@codesandbox/sandpack-themes";
 
 interface SandboxEnvironmentProps {
   code: string;
@@ -77,7 +77,7 @@ export default function SandboxEnvironment({
       resolvedTheme === "dark" ||
       (typeof document !== "undefined" &&
         document.documentElement.classList.contains("dark"));
-    return isDark ? atomDark : ecoLight;
+    return isDark ? gruvboxDark : ecoLight;
   }, [resolvedTheme]);
 
   const options = React.useMemo(
