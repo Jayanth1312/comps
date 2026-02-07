@@ -15,11 +15,20 @@ const ComponentCodeSchema = z.object({
   code: z.string(),
 });
 
-const ResponseSchema = z.array(ComponentCodeSchema);
+const ResponseObjectSchema = z.object({
+  message: z.string().optional(),
+  variants: z.array(ComponentCodeSchema),
+});
+
+// Union type to handle both new object format and legacy array format
+const ResponseSchema = z.union([
+  ResponseObjectSchema,
+  z.array(ComponentCodeSchema),
+]);
 
 export class GeminiOrchestrator {
-  private model: any;
   private messageHistories: Record<string, InMemoryChatMessageHistory>;
+  private model: any;
 
   constructor() {
     this.model = new ChatGoogleGenerativeAI({
@@ -59,7 +68,14 @@ export class GeminiOrchestrator {
     return this.messageHistories[sessionId];
   }
 
-  async generateComponent(prompt: string, sessionId: string) {
+  async generateComponent(
+    prompt: string,
+    sessionId: string,
+    images?: string[], // Base64 strings or URLs
+  ): Promise<{
+    message: string;
+    variants: z.infer<typeof ComponentCodeSchema>[];
+  }> {
     const promptTemplate = ChatPromptTemplate.fromMessages([
       ["system", SYSTEM_PROMPT],
       new MessagesPlaceholder("history"),
@@ -79,8 +95,20 @@ export class GeminiOrchestrator {
     });
 
     try {
+      // Create multimodal input if images are provided
+      let input: any = prompt;
+      if (images && images.length > 0) {
+        input = [
+          { type: "text", text: prompt },
+          ...images.map((img) => ({
+            type: "image_url",
+            image_url: img,
+          })),
+        ];
+      }
+
       const result = await withHistory.invoke(
-        { input: prompt },
+        { input },
         { configurable: { sessionId } },
       );
 
@@ -92,10 +120,17 @@ export class GeminiOrchestrator {
       // Clean the result if it includes markdown code blocks
       let cleanResult = result;
       if (typeof result === "string") {
-        cleanResult = result
-          .replace(/^```json\s*/, "")
-          .replace(/```$/, "")
-          .trim();
+        // Try to find the JSON array or object within the string
+        const jsonMatch = result.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanResult = jsonMatch[0];
+        } else {
+          // Fallback cleanup if no clear JSON structure is found
+          cleanResult = result
+            .replace(/^```json\s*/, "")
+            .replace(/```$/, "")
+            .trim();
+        }
       }
 
       console.log(
@@ -103,23 +138,81 @@ export class GeminiOrchestrator {
         cleanResult.substring(0, 200) + "...",
       );
 
-      // Validate and parse JSON
       try {
-        let parsed = JSON.parse(cleanResult);
-
-        if (
-          !Array.isArray(parsed) &&
-          typeof parsed === "object" &&
-          parsed !== null
-        ) {
+        // Try to repair truncated JSON if standard parse fails
+        let parsed;
+        try {
+          // Standard parse
+          parsed = JSON.parse(cleanResult);
+        } catch (initialErr) {
           console.log(
-            "[Orchestrator] AI returned a single object. Wrapping in array.",
+            "[Orchestrator] Parse failed, attempting truncation repair...",
           );
-          parsed = [parsed];
+          try {
+            // Very basic truncation repair: find where it was cut off and close the JSON
+            let repaired = cleanResult;
+
+            // If it ends in the middle of a string, close the string
+            const quoteCount = (repaired.match(/"/g) || []).length;
+            if (quoteCount % 2 !== 0) {
+              repaired += '"}';
+            }
+
+            // Count open vs closed braces and brackets
+            const openBraces = (repaired.match(/{/g) || []).length;
+            const closeBraces = (repaired.match(/}/g) || []).length;
+            const openBrackets = (repaired.match(/\[/g) || []).length;
+            const closeBrackets = (repaired.match(/\]/g) || []).length;
+
+            for (let i = 0; i < openBraces - closeBraces; i++) repaired += "}";
+            for (let i = 0; i < openBrackets - closeBrackets; i++)
+              repaired += "]";
+
+            parsed = JSON.parse(repaired);
+            console.log("[Orchestrator] Successfully repaired truncated JSON");
+          } catch (repairErr) {
+            // If repair fails, try sanitization
+            console.log(
+              "[Orchestrator] Repair failed, attempting sanitization...",
+            );
+            let sanitized = cleanResult.replace(/\\'/g, "'");
+            parsed = JSON.parse(sanitized);
+          }
         }
 
-        const validated = ResponseSchema.parse(parsed);
-        return validated;
+        // Normalize the parsed result
+        let finalResult = {
+          message: "",
+          variants: [] as any[],
+        };
+
+        if (Array.isArray(parsed)) {
+          // Legacy array format
+          finalResult.variants = parsed;
+          finalResult.message = `Here are ${parsed.length} implementation${parsed.length !== 1 ? "s" : ""} for your request.`;
+        } else if (parsed && typeof parsed === "object") {
+          if ("variants" in parsed && Array.isArray(parsed.variants)) {
+            // New object format
+            finalResult.message =
+              parsed.message ||
+              `Here are ${parsed.variants.length} implementation${parsed.variants.length !== 1 ? "s" : ""} for your request.`;
+            finalResult.variants = parsed.variants;
+          } else if ("code" in parsed && "library" in parsed) {
+            // Single code object (legacy fallback)
+            finalResult.variants = [parsed as any];
+            finalResult.message = "Here is the component you requested.";
+          }
+        }
+
+        // Validate variants
+        const validatedVariants = z
+          .array(ComponentCodeSchema)
+          .parse(finalResult.variants);
+
+        return {
+          message: finalResult.message,
+          variants: validatedVariants,
+        };
       } catch (e: any) {
         console.error("Failed to parse or validate JSON.");
         if (e && e.issues) {

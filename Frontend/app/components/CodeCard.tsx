@@ -1,146 +1,138 @@
 import React, { useState } from "react";
-import { Code, Eye, Copy, X, Check } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { duotoneEarth } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { cn } from "@/lib/utils";
+import { Code, Download, AltArrowDown } from "@solar-icons/react";
+import { Dot } from "lucide-react";
 
-interface CodeCardProps {
-  content: string;
-  language?: string;
-  previewComponent?: React.ReactNode;
-  onExpandChange?: (isExpanded: boolean) => void;
+interface CodeVariant {
+  library: string;
+  code: string;
+  language: string;
 }
 
+interface CodeCardProps {
+  name?: string;
+  // Legacy props (optional now)
+  language?: string;
+  code?: string;
+  // New prop for multiple variants
+  variants?: CodeVariant[];
+  onExpand: (selectedVariant: CodeVariant) => void;
+}
+
+const LIBRARY_ORDER = [
+  "shadcn",
+  "mui",
+  "chakraui",
+  "antd",
+  "daisyui",
+  "mantine",
+];
+
 export default function CodeCard({
-  content,
+  name = "ComponentName",
   language = "tsx",
-  previewComponent,
-  onExpandChange,
+  code = "",
+  variants = [],
+  onExpand,
 }: CodeCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
-  const [copied, setCopied] = useState(false);
+  // Determine if we have variants or just a single code block
+  const hasVariants = variants.length > 0;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // Memoize sorted variants to ensure consistent order
+  const sortedVariants = React.useMemo(() => {
+    if (!hasVariants) return [];
+    return [...variants].sort((a, b) => {
+      const indexA = LIBRARY_ORDER.indexOf(a.library.toLowerCase());
+      const indexB = LIBRARY_ORDER.indexOf(b.library.toLowerCase());
 
-  const handleToggleExpand = () => {
-    const newState = !isExpanded;
-    setIsExpanded(newState);
-    onExpandChange?.(newState);
+      // If both are in the known list, sort by index
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      // If only A is known, it comes first
+      if (indexA !== -1) return -1;
+      // If only B is known, it comes first
+      if (indexB !== -1) return 1;
+      // Otherwise sort alphabetically
+      return a.library.localeCompare(b.library);
+    });
+  }, [variants, hasVariants]);
+
+  // Default to first sorted variant or the single code prop
+  const [selectedLibrary, setSelectedLibrary] = useState<string>(
+    hasVariants ? sortedVariants[0].library : "default",
+  );
+
+  // Sync state when variants change (e.g. AI re-generates or new message loaded)
+  // BUT only reset if the currently selected library is no longer valid
+  React.useEffect(() => {
+    if (hasVariants && sortedVariants.length > 0) {
+      const isCurrentValid = sortedVariants.some(
+        (v) => v.library === selectedLibrary,
+      );
+      if (!isCurrentValid) {
+        setSelectedLibrary(sortedVariants[0].library);
+      }
+    }
+  }, [sortedVariants, hasVariants, selectedLibrary]);
+
+  const currentVariant = hasVariants
+    ? sortedVariants.find((v) => v.library === selectedLibrary) ||
+      sortedVariants[0]
+    : { library: "default", code, language };
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const blob = new Blob([currentVariant.code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+
+    // Determine extension
+    const ext =
+      currentVariant.language.toLowerCase() === "tsx" ||
+      currentVariant.language.toLowerCase() === "typescript"
+        ? "tsx"
+        : currentVariant.language.toLowerCase() === "jsx" ||
+            currentVariant.language.toLowerCase() === "javascript"
+          ? "jsx"
+          : currentVariant.language.toLowerCase();
+
+    a.download = `${name}-${currentVariant.library}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <>
-      {/* Card Component - Clickable */}
-      <button
-        onClick={handleToggleExpand}
-        className="w-full rounded-2xl overflow-hidden shadow-sm bg-muted/30 border border-border/50 hover:border-primary/30 transition-all cursor-pointer text-left group"
-      >
-        {/* Card Header */}
-        <div className="bg-muted/50 px-4 py-3 flex items-center justify-between border-b border-border/50">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium uppercase tracking-wider">
-            <Code size={14} />
-            {language}
+    <div
+      onClick={() => onExpand(currentVariant)}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/30 hover:border-border/80 transition-all duration-300 cursor-pointer w-full max-w-sm"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 p-4 border-b border-border/40 bg-muted/10">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Code weight="BoldDuotone" size={18} />
           </div>
-          <div className="text-xs text-muted-foreground group-hover:text-primary transition-colors">
-            Click to expand
-          </div>
-        </div>
-
-        {/* Code Preview (truncated) */}
-        <div className="p-4 max-h-[120px] overflow-hidden relative">
-          <SyntaxHighlighter
-            language={language}
-            style={duotoneEarth}
-            customStyle={{
-              background: "transparent",
-              margin: 0,
-              padding: 0,
-              fontSize: "13px",
-            }}
-            wrapLongLines={true}
-          >
-            {content.split("\n").slice(0, 4).join("\n")}
-          </SyntaxHighlighter>
-          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-muted/30 to-transparent" />
-        </div>
-      </button>
-
-      {/* Expanded Panel Header - Shows tabs when expanded */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-4 py-3 bg-muted/20 border border-border/50 rounded-xl mt-2">
-              <div className="flex items-center gap-2">
-                {/* Tabs */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveTab("code");
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all font-medium text-sm",
-                    activeTab === "code"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                  )}
-                >
-                  <Code size={14} />
-                  Code
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveTab("preview");
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all font-medium text-sm",
-                    activeTab === "preview"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                  )}
-                >
-                  <Eye size={14} />
-                  Preview
-                </button>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCopy();
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background hover:bg-muted transition-all text-sm font-medium shadow-sm"
-                >
-                  {copied ? (
-                    <>
-                      <Check size={14} />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </div>
+          <div className="flex flex-col min-w-0">
+            <h3 className="text-sm font-medium text-foreground truncate max-w-full">
+              {name}
+            </h3>
+            <div className="text-xs text-muted-foreground flex items-center">
+              <span>Code</span>
+              <Dot />
+              <span>{currentVariant.language.toUpperCase()}</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          </div>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          className="shrink-0 p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors z-20 cursor-pointer"
+          title="Download Code"
+        >
+          <Download size={18} />
+        </button>
+      </div>
+    </div>
   );
 }

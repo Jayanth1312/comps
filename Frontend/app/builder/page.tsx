@@ -1,33 +1,28 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
-import {
-  ArrowUp,
-  ArrowLeft,
-  Paperclip2,
-  Copy,
-  Code,
-  Eye,
-  Download,
-  Unread,
-  History
-} from "@solar-icons/react";
+import { ArrowLeft } from "@solar-icons/react";
 import ThemeToggle from "@/app/components/theme-toggle";
 import UserMessage from "@/app/components/UserMessage";
 import AIMessage from "@/app/components/AIMessage";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { duotoneEarth } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import AIInput from "@/app/components/AIInput";
+import CodeCard from "@/app/components/CodeCard";
+import CodeExpansionPanel from "@/app/components/CodeExpansionPanel";
+import AITextLoading from "@/components/kokonutui/ai-text-loading";
 
-// Types for chat messages
 type MessageType = "text" | "code";
 
-interface CodeBlock {
-  content: string;
+interface CodeVariant {
+  library: string;
+  code: string;
   language: string;
+}
+
+interface CodeBlock {
+  language: string;
+  content: string;
 }
 
 interface Message {
@@ -35,40 +30,16 @@ interface Message {
   role: "user" | "ai";
   content: string;
   type: MessageType;
-  codeBlock?: CodeBlock;
+  codeBlock?: CodeBlock; // Legacy support
+  codeVariants?: CodeVariant[]; // New support
 }
 
-// Mock initial chat history
 const INITIAL_MESSAGES: Message[] = [
   {
     id: "1",
     role: "ai",
-    content:
-      "Hi! I'm your AI component builder. What would you like to build today?",
+    content: "Hi! Describe a component you want me to build.",
     type: "text",
-  },
-  {
-    id: "2",
-    role: "user",
-    content: "Can you create a simple button component using Material?",
-    type: "text",
-  },
-  {
-    id: "3",
-    role: "ai",
-    content:
-      "Sure! Here is a simple button component styled with Material UI library",
-    type: "text",
-    codeBlock: {
-      content: `export default function Button({ children }) {
-  return (
-    <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-      {children}
-    </button>
-  );
-}`,
-      language: "tsx",
-    },
   },
 ];
 
@@ -76,72 +47,185 @@ export default function BuilderPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
-  const [copied, setCopied] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<
+    CodeVariant | undefined
+  >(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Resize state
+  const [isResizing, setIsResizing] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(45); // Percentage
+
+  const startResizing = useCallback(() => setIsResizing(true), []);
+  const stopResizing = useCallback(() => setIsResizing(false), []);
+
+  const resize = useCallback(
+    (e: MouseEvent) => {
+      if (isResizing) {
+        const newWidthPixels = window.innerWidth - e.clientX;
+
+        // Constraints in pixels
+        const rightMinWidth = 520;
+        const leftMinWidth = 480;
+
+        const maxRightPixels = window.innerWidth - leftMinWidth;
+
+        if (
+          newWidthPixels >= rightMinWidth &&
+          newWidthPixels <= maxRightPixels
+        ) {
+          const newWidthPercent = (newWidthPixels / window.innerWidth) * 100;
+          setPanelWidth(newWidthPercent);
+        }
+      }
+    },
+    [isResizing],
+  );
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+    } else {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    }
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, [isResizing, resize, stopResizing]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [inputValue]);
-
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async (text?: string, images?: string[]) => {
+    const messageContent = text || inputValue;
+    if (!messageContent.trim() && (!images || images.length === 0)) return;
 
     // Add user message
     const newMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputValue,
+      content: messageContent,
       type: "text",
     };
 
     setMessages((prev) => [...prev, newMessage]);
     setInputValue("");
+    setIsLoading(true);
 
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    try {
+      const response = await fetch("http://localhost:3001/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: newMessage.content,
+          sessionId: "default-session",
+          images: images || [],
+        }),
+      });
 
-    // Simulate AI response (mock)
-    setTimeout(() => {
-      const aiResponse: Message = {
+      if (!response.ok) {
+        throw new Error("Failed to generate component");
+      }
+
+      const data = await response.json();
+
+      // Determine if response is an array (variants) or single object
+      let variants: CodeVariant[] = [];
+      let aiContent = "";
+
+      const processVariant = (v: any): CodeVariant => ({
+        library: v.library || "default",
+        code: v.code || "",
+        language: v.language || "tsx", // Ensure language exists
+      });
+
+      if (data.variants && Array.isArray(data.variants)) {
+        // New structure: { message, variants }
+        variants = data.variants.map(processVariant);
+        aiContent =
+          data.message ||
+          `Here are ${variants.length} implementation${variants.length !== 1 ? "s" : ""} for your request.`;
+      } else if (Array.isArray(data)) {
+        // Fallback: CodeVariant[]
+        variants = data.map(processVariant);
+        aiContent = `Here are ${variants.length} implementation${variants.length !== 1 ? "s" : ""} for your request.`;
+      } else if (data.code) {
+        // Fallback: Single CodeVariant
+        variants = [processVariant(data)];
+        aiContent = "Here is the component you requested.";
+      }
+
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        content: "I'm working on that for you...",
+        content: aiContent,
+        type: "code",
+        codeVariants: variants,
+        // Fallback for legacy components
+        codeBlock:
+          variants.length > 0
+            ? {
+                language: variants[0].language,
+                content: variants[0].code,
+              }
+            : undefined,
+      };
+
+      setMessages((prev) => {
+        const newMessages = [...prev, aiMessage];
+
+        // If the panel was open on the message we just followed up on,
+        // update it to the new AI message to keep the view "live".
+        if (expandedCode) {
+          // 'prev' contains the messages before the AI message was added.
+          // The last message in 'prev' is the NEW user message.
+          // The one before that is the OLD AI message.
+          const lastAiMessage = prev.length >= 1 ? prev[prev.length - 1] : null;
+          // Wait, prev[prev.length-1] is the user message.
+          // We want to check if expandedCode was the PREVIOUS AI msg.
+          const previousAiMessage = prev.findLast(
+            (m) => m.role === "ai" && m.id === expandedCode,
+          );
+
+          if (previousAiMessage) {
+            setExpandedCode(aiMessage.id);
+            // Sync selected variant to the new message's variants
+            if (variants.length > 0) {
+              const currentLib = selectedVariant?.library;
+              const nextVariant =
+                variants.find((v) => v.library === currentLib) || variants[0];
+              setSelectedVariant(nextVariant);
+            }
+          }
+        }
+        return newMessages;
+      });
+    } catch (error) {
+      console.error("Error generating component:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "ai",
+        content: "Sorry, something went wrong while generating the component.",
         type: "text",
       };
-      setMessages((prev) => [...prev, aiResponse]);
-    }, 1000);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCopy = () => {
-    if (expandedCode) {
-      const message = messages.find((m) => m.id === expandedCode);
-      if (message?.codeBlock) {
-        navigator.clipboard.writeText(message.codeBlock.content);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    }
+  const handleNewChat = () => {
+    setMessages(INITIAL_MESSAGES);
+    setInputValue("");
+    setExpandedCode(null);
+    setSelectedVariant(undefined);
   };
 
   // Preview component for demonstration
@@ -149,6 +233,10 @@ export default function BuilderPage() {
     <button className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-lg active:scale-95 transition-all">
       Click Me
     </button>
+  );
+
+  const [activeTab, setActiveTab] = useState<"code" | "preview" | "sandbox">(
+    "code",
   );
 
   const currentExpandedMessage = messages.find((m) => m.id === expandedCode);
@@ -162,96 +250,81 @@ export default function BuilderPage() {
       */}
       <div
         className={cn(
-          "flex flex-col relative transition-all duration-300 ease-in-out",
-          expandedCode ? "w-full lg:w-1/2" : "w-full",
+          "flex flex-col relative",
+          !isResizing && "transition-all duration-300 ease-in-out",
         )}
+        style={{
+          width: expandedCode ? `${100 - panelWidth}%` : "100%",
+          minWidth: expandedCode ? "480px" : "auto",
+        }}
       >
-        {/* Header (Top) */}
-        <header
-          className="fixed top-0 left-0 z-50 py-4 flex items-center justify-between pointer-events-none"
-          style={{
-            right: expandedCode ? "auto" : "0",
-            width: expandedCode ? "calc(50% - 2rem)" : "auto",
-          }}
-        >
-          {/* Back Button */}
-          <div className="px-4 md:px-6">
+        {/* Header Elements (Absolute) */}
+        <div className="absolute top-0 left-0 w-full z-20 pointer-events-none p-4 md:p-6 flex justify-between items-start">
+          <div className="pointer-events-auto">
             <button
               onClick={() => router.back()}
-              className="pointer-events-auto w-10 h-10 flex items-center justify-center rounded-md bg-muted/20 backdrop-blur-md border border-border/50 hover:bg-muted/40 text-foreground transition-all duration-300 group cursor-pointer"
-              aria-label="Go back"
+              className="p-3 bg-muted/20 backdrop-blur-sm border border-border/50 hover:bg-muted/30 transition-all rounded-md"
             >
               <ArrowLeft
                 weight="BoldDuotone"
                 size={20}
-                className="group-hover:-translate-x-0.5 transition-transform"
+                className="text-muted-foreground hover:text-foreground"
               />
             </button>
           </div>
-          <div className="flex items-center">
-            <div className="p-2.5 pointer-events-auto flex items-center justify-center rounded-md bg-muted/20 backdrop-blur-md border border-border/50 hover:bg-muted/40 text-foreground transition-all duration-300 group cursor-pointer">
-              <div className="flex items-center gap-2">
-                <History weight="BoldDuotone" size={20} />
-                History
-              </div>
-            </div>
 
-            {/* Theme Toggle */}
-            <div className="pointer-events-auto px-4 md:px-6">
-              <ThemeToggle />
-            </div>
+          {/* Theme Toggle */}
+          <div className="pointer-events-auto">
+            <ThemeToggle />
           </div>
-        </header>
+        </div>
 
-        {/* Chat Area (Middle) */}
-        <main className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto pt-24 pb-32 px-4 md:px-14 space-y-6">
-          {messages.map((msg) => {
-            // Render User Messages
-            if (msg.role === "user") {
-              return <UserMessage key={msg.id} content={msg.content} />;
-            }
+        {/* Chat Area */}
+        <main className="flex-1 overflow-y-auto pt-20 pb-56 scroll-smooth">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 space-y-6">
+            {messages.map((msg) => {
+              if (msg.role === "user") {
+                return <UserMessage key={msg.id} content={msg.content} />;
+              }
 
-            // Render AI Messages with optional code block
-            if (msg.role === "ai") {
-              return (
-                <AIMessage key={msg.id} content={msg.content}>
-                  {msg.codeBlock && (
-                    <button
-                      onClick={() => setExpandedCode(msg.id)}
-                      className="w-full rounded-lg overflow-hidden bg-muted/30 border border-border/50 hover:border-primary/15 dark:hover:border-foreground/15 transition-all cursor-pointer text-left group p-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-sm bg-muted/50 border border-border/50 flex items-center justify-center">
-                            <Code
-                              weight="BoldDuotone"
-                              size={18}
-                              className="text-muted-foreground"
-                            />
-                          </div>
-                          <div>
-                            <div className="font-medium text-sm">
-                              ComponentName
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              Code · {msg.codeBlock.language.toUpperCase()}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="px-4 py-2 rounded-sm border border-border/50 bg-background text-sm font-medium hover:bg-muted/50 transition-colors flex items-center gap-2">
-                          <Download weight="LineDuotone" size={16} />
-                          Download
-                        </div>
+              if (msg.role === "ai") {
+                return (
+                  <AIMessage key={msg.id} content={msg.content}>
+                    {msg.codeVariants && msg.codeVariants.length > 0 && (
+                      <div className="max-w-2xl">
+                        <CodeCard
+                          name={`Generated Component`}
+                          language={msg.codeVariants[0].language} // Default/Fallback
+                          code={msg.codeVariants[0].code} // Default/Fallback
+                          variants={msg.codeVariants}
+                          onExpand={(variant) => {
+                            setExpandedCode(msg.id);
+                            setSelectedVariant(variant);
+                          }}
+                        />
                       </div>
-                    </button>
-                  )}
-                </AIMessage>
-              );
-            }
+                    )}
+                    {/* Fallback for old messages without variants */}
+                    {!msg.codeVariants && msg.codeBlock && (
+                      <CodeCard
+                        language={msg.codeBlock.language}
+                        code={msg.codeBlock.content}
+                        onExpand={() => setExpandedCode(msg.id)}
+                      />
+                    )}
+                  </AIMessage>
+                );
+              }
 
-            return null;
-          })}
-          <div ref={messagesEndRef} />
+              return null;
+            })}
+            {isLoading && (
+              <AIMessage content="">
+                <AITextLoading />
+              </AIMessage>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
         </main>
 
         {/* Input Area (Bottom) */}
@@ -259,7 +332,7 @@ export default function BuilderPage() {
           className="fixed bottom-0 left-0 z-50 pointer-events-none"
           style={{
             right: expandedCode ? "auto" : "0",
-            width: expandedCode ? "50%" : "100%",
+            width: expandedCode ? `${100 - panelWidth}%` : "100%",
           }}
         >
           {/* Fog mask */}
@@ -276,48 +349,13 @@ export default function BuilderPage() {
           />
 
           <div className="w-full pb-6 px-4 md:px-6 relative z-10 pointer-events-auto">
-            <div className="max-w-3xl mx-auto flex gap-2 md:gap-3 items-end">
-              {/* Input Container */}
-              <div className="flex-1 bg-muted/20 backdrop-blur-md border border-border/50 rounded-lg p-2 flex items-end gap-2 transition-all">
-                {/* Add Attachment Button */}
-                <button
-                  className="w-10 h-10 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0 cursor-pointer"
-                  aria-label="Add attachment"
-                >
-                  <Paperclip2 weight="BoldDuotone" size={20} />
-                </button>
-
-                {/* Text Input */}
-                <textarea
-                  ref={textareaRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask AI to build something..."
-                  className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 min-h-[40px] max-h-[120px] py-2 resize-none text-[15px] font-medium leading-relaxed"
-                  rows={1}
-                  style={{
-                    height: "auto",
-                    minHeight: "40px",
-                  }}
-                />
-
-                {/* Send Button */}
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim()}
-                  className={cn(
-                    "w-10 h-10 flex items-center justify-center rounded-md transition-all duration-300 shrink-0 cursor-pointer",
-                    inputValue.trim()
-                      ? "bg-foreground text-background hover:bg-foreground/90 shadow-md"
-                      : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
-                  )}
-                  aria-label="Send message"
-                >
-                  <ArrowUp weight="BoldDuotone" size={20} />
-                </button>
-              </div>
-            </div>
+            <AIInput
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={(text, images) => handleSendMessage(text, images)}
+              onNewChat={handleNewChat}
+              isLoading={isLoading}
+            />
           </div>
         </div>
       </div>
@@ -327,156 +365,44 @@ export default function BuilderPage() {
         Right Side Panel (Code Expansion)
         ========================================
       */}
-      <AnimatePresence>
-        {expandedCode && currentExpandedMessage?.codeBlock && (
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full lg:w-1/2 bg-background border-l border-border flex flex-col z-40"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-background">
-              <div className="flex items-center gap-4">
-                {/* Tab Switcher (Pill Style) */}
-                <div className="flex items-center gap-3">
-                  <div className="flex bg-muted/30 rounded-md border border-border/50 p-1 relative">
-                    {/* Code Tab */}
-                    <button
-                      onClick={() => setActiveTab("code")}
-                      className={cn(
-                        "relative w-9 h-9 flex items-center justify-center transition-colors cursor-pointer rounded-sm",
-                        activeTab === "code"
-                          ? "text-background"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {activeTab === "code" && (
-                        <motion.div
-                          layoutId="switcherIndicator"
-                          className="absolute inset-0 bg-foreground rounded-sm"
-                          transition={{
-                            type: "spring",
-                            bounce: 0,
-                            duration: 0.3,
-                          }}
-                        />
-                      )}
-                      <Code
-                        weight="BoldDuotone"
-                        size={18}
-                        className="relative z-10"
-                      />
-                    </button>
+      <CodeExpansionPanel
+        isOpen={!!expandedCode}
+        onClose={() => {
+          setExpandedCode(null);
+          setActiveTab("code"); // Reset tab when closing
+          setSelectedVariant(undefined);
+        }}
+        codeBlock={currentExpandedMessage?.codeBlock}
+        variants={currentExpandedMessage?.codeVariants}
+        selectedVariant={selectedVariant}
+        PreviewComponent={PreviewButton}
+        width={`${panelWidth}%`}
+        isResizing={isResizing}
+        activeTab={activeTab}
+        onActiveTabChange={setActiveTab}
+        messageId={expandedCode || undefined}
+      />
 
-                    {/* Preview Tab */}
-                    <button
-                      onClick={() => setActiveTab("preview")}
-                      className={cn(
-                        "relative w-9 h-9 flex items-center justify-center transition-colors cursor-pointer rounded-sm",
-                        activeTab === "preview"
-                          ? "text-background"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {activeTab === "preview" && (
-                        <motion.div
-                          layoutId="switcherIndicator"
-                          className="absolute inset-0 bg-foreground rounded-sm"
-                          transition={{
-                            type: "spring",
-                            bounce: 0,
-                            duration: 0.3,
-                          }}
-                        />
-                      )}
-                      <Eye
-                        weight="LineDuotone"
-                        size={18}
-                        className="relative z-10"
-                      />
-                    </button>
-                  </div>
-
-                  {/* Component Info Label */}
-                  <div className="flex items-center gap-1.5 text-[15px] font-medium">
-                    <span className="text-foreground">Page</span>
-                    <span className="text-muted-foreground/40">•</span>
-                    <span className="text-muted-foreground uppercase">
-                      {currentExpandedMessage.codeBlock.language}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCopy}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-sm hover:bg-muted/80 transition-all text-sm font-medium cursor-pointer"
-                >
-                  {copied ? (
-                    <>
-                      <Unread
-                        weight="BoldDuotone"
-                        className="text-green-500"
-                        size={16}
-                      />
-                      <span className="text-green-500">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy weight="LineDuotone" size={16} />
-                      Copy
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setExpandedCode(null)}
-                  className="w-10 h-10 flex items-center justify-center rounded-sm hover:bg-muted transition-all cursor-pointer"
-                >
-                  <Download weight="LineDuotone" size={20} />
-                </button>
-                <button
-                  onClick={() => setExpandedCode(null)}
-                  className="w-10 h-10 flex items-center justify-center rounded-sm hover:bg-muted transition-all cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-auto bg-background">
-              {activeTab === "code" && (
-                <SyntaxHighlighter
-                  language={currentExpandedMessage.codeBlock.language}
-                  style={duotoneEarth}
-                  customStyle={{
-                    background: "transparent",
-                    margin: 0,
-                    padding: "1.5rem",
-                    fontSize: "14px",
-                    width: "100%",
-                    overflow: "visible",
-                  }}
-                  showLineNumbers={true}
-                  wrapLongLines={true}
-                >
-                  {currentExpandedMessage.codeBlock.content}
-                </SyntaxHighlighter>
-              )}
-
-              {activeTab === "preview" && (
-                <div className="p-8 md:p-12 flex items-center justify-center min-h-full bg-muted/20">
-                  <PreviewButton />
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Resize Handle */}
+      {expandedCode && activeTab !== "sandbox" && (
+        <div
+          onMouseDown={startResizing}
+          className={cn(
+            "fixed top-0 bottom-0 z-40 w-2 cursor-col-resize flex items-center justify-center",
+            isResizing && "bg-primary/30",
+          )}
+          style={{
+            right: `${panelWidth}%`,
+            transform: "translateX(50%)",
+          }}
+        >
+          {/* Visual Handle */}
+          <div className="w-2 h-10 rounded-full bg-border relative">
+            <div className="absolute inset-0 -inset-x-2" />{" "}
+            {/* Larger hit area */}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,7 +14,7 @@ app.get("/", (c) => {
 
 app.route("/api/generate", generateRoute);
 
-const port = parseInt(process.env.PORT || "3000");
+const port = parseInt(process.env.PORT || "3001");
 console.log(`Server is running on port ${port}`);
 
 export default {
