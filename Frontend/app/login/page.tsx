@@ -4,6 +4,7 @@ import { Library } from "@solar-icons/react";
 import { LoginForm } from "@/components/login-form";
 import Beams from "@/components/Beams";
 import ThemeToggle from "@/app/components/theme-toggle";
+import { Suspense } from "react";
 
 export default function LoginPage() {
   return (
@@ -43,7 +44,15 @@ export default function LoginPage() {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs">
-            <LoginForm />
+            <Suspense
+              fallback={
+                <div className="h-64 flex items-center justify-center">
+                  Loading...
+                </div>
+              }
+            >
+              <LoginForm />
+            </Suspense>
           </div>
         </div>
       </div>
