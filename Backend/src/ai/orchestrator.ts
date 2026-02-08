@@ -33,7 +33,7 @@ export class GeminiOrchestrator {
 
   constructor() {
     this.model = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       maxOutputTokens: 16384,
       apiKey: process.env.GEMINI_API_KEY,
       // @ts-ignore
@@ -158,17 +158,51 @@ export class GeminiOrchestrator {
       // Clean the result if it includes markdown code blocks
       let cleanResult = result;
       if (typeof result === "string") {
-        // Try to find the JSON array or object within the string
-        const jsonMatch = result.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
-        if (jsonMatch) {
-          cleanResult = jsonMatch[0];
+        // Method 1: Robust index finding (handles prefix/suffix text)
+        const firstBrace = result.indexOf("{");
+        const firstBracket = result.indexOf("[");
+        const start =
+          firstBrace !== -1 && firstBracket !== -1
+            ? Math.min(firstBrace, firstBracket)
+            : firstBrace !== -1
+              ? firstBrace
+              : firstBracket;
+
+        const lastBrace = result.lastIndexOf("}");
+        const lastBracket = result.lastIndexOf("]");
+        const end = Math.max(lastBrace, lastBracket);
+
+        if (start !== -1 && end !== -1 && end > start) {
+          cleanResult = result.substring(start, end + 1);
         } else {
-          // Fallback cleanup if no clear JSON structure is found
-          cleanResult = result
-            .replace(/^```json\s*/, "")
-            .replace(/```$/, "")
-            .trim();
+          // Method 2: Regex fallback
+          const jsonMatch = result.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+          if (jsonMatch) {
+            cleanResult = jsonMatch[0];
+          } else {
+            // Method 3: Simple cleanup
+            cleanResult = result
+              .replace(/^```json\s*/, "")
+              .replace(/```$/, "")
+              .trim();
+          }
         }
+      }
+
+      // Pre-parsing Fix: Escape single trailing backslashes or unescaped backslashes
+      // This specifically addresses "Unrecognized token \" errors
+      if (typeof cleanResult === "string") {
+        cleanResult = cleanResult.replace(/\\(?!"|\\|n|r|t|b|f|u)/g, "\\\\");
+      }
+
+      // If after cleaning it doesn't look like JSON, throw a more helpful error
+      if (
+        !cleanResult.trim().startsWith("{") &&
+        !cleanResult.trim().startsWith("[")
+      ) {
+        throw new Error(
+          `AI response does not contain a valid JSON block. Received: "${cleanResult.substring(0, 50)}..."`,
+        );
       }
 
       console.log(
