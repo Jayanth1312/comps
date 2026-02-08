@@ -39,7 +39,7 @@ Rules:
 * When generating all 6 libraries, use these EXACT lowercase keys for the "library" field: shadcn, mui, chakraui, antd, daisyui, mantine.
 * The "code" field must contain the full component code including necessary imports.
 * Do NOT encompass the code in markdown code blocks inside the JSON string.
-* EXPORT RULE: You MUST always provide a 'default export' for the main component (e.g., export default function MyComponent() { ... }). This is critical for the sandbox environment to render the component correctly.
+* EXPORT RULE: You MUST always provide a 'default export' for the main component (e.g., export default function MyComponent() {{ ... }}). This is critical for the sandbox environment to render the component correctly.
 * Ensure the code is self-contained where possible (mock props/data if needed).
 * For shadcn, assume the necessary ui components are available in '@/components/ui/...'.
 * Use "lucide-react" for all icons.
