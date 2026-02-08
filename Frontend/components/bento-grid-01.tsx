@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { COMPONENTS } from "@/types/component-data";
 import ComponentCard from "@/app/components/component-card";
 import { useSortContext } from "@/contexts/sort-context";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "@solar-icons/react";
 import {
@@ -13,7 +13,12 @@ import {
 } from "@/lib/layout-optimizer";
 
 function FeaturesSection() {
-  const { sortBy, componentStats } = useSortContext();
+  const { sortBy, componentStats, refreshStats } = useSortContext();
+
+  // Force refresh stats on mount to ensure Explore page is up to date
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats]);
 
   const sortedComponents = useMemo(() => {
     const componentsWithStats = COMPONENTS.map((comp) => ({

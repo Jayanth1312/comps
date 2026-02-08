@@ -79,7 +79,7 @@ export default function LibrariesGrid() {
               <div
                 key={lib.name}
                 className={`
-                  group relative p-12 flex flex-col items-center justify-center text-center transition-colors duration-300 hover:bg-muted/30
+                  group relative p-8 md:p-12 flex flex-col items-center justify-center text-center transition-colors duration-300 hover:bg-muted/30
                   ${index % 3 !== 2 ? "md:border-r border-border/60" : ""}
                   ${Math.floor(index / 3) < Math.floor((LIBRARIES.length - 1) / 3) ? "md:border-b border-border/60" : ""}
                   ${index < LIBRARIES.length - 1 ? "border-b md:border-b-0 border-border/60" : ""}

@@ -3,16 +3,18 @@
 import { useState } from "react";
 import { notFound, useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "@solar-icons/react";
+import { ArrowLeft, Heart } from "@solar-icons/react";
 import Header from "@/app/components/header";
 import LibraryComparisonCard from "@/app/components/library-comparison-card";
 import LibraryFilter from "@/app/components/library-filter";
 import ScrollToTop from "@/app/components/scroll-to-top";
+import { useSortContext } from "@/contexts/sort-context";
 import { COMPONENTS, LIBRARIES } from "@/types/component-data";
 
 export default function ComparePage() {
   const params = useParams();
   const componentSlug = params.component as string;
+  const { componentStats, toggleFavorite } = useSortContext();
 
   const [selectedLibraries, setSelectedLibraries] = useState<string[]>(
     LIBRARIES.map((l) => l.name),
@@ -48,9 +50,29 @@ export default function ComparePage() {
           {/* Component Header with Filter */}
           <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold tracking-tight mb-2 md:mb-4">
-                {component.name}
-              </h1>
+              <div className="flex items-center gap-4 mb-2 md:mb-4">
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold tracking-tight">
+                  {component.name}
+                </h1>
+                <button
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl border border-border transition-all duration-300 ${
+                    componentStats[component.slug]?.isFavorite
+                      ? "bg-red-500/10 text-red-500 border-red-500/20"
+                      : "bg-background hover:bg-muted text-muted-foreground"
+                  }`}
+                  aria-label="Toggle Favorite"
+                  onClick={() => toggleFavorite(component.slug)}
+                >
+                  <Heart
+                    size={20}
+                    weight={
+                      componentStats[component.slug]?.isFavorite
+                        ? "Bold"
+                        : "Outline"
+                    }
+                  />
+                </button>
+              </div>
               <p className="text-muted-foreground text-base md:text-xl max-w-3xl">
                 {component.description}
               </p>

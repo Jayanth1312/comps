@@ -3,10 +3,14 @@
 import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { duotoneEarth } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { LibraryInfo } from "@/types/component-data";
+import { LibraryInfo, ComponentSlug } from "@/types/component-data";
 import { getComponentExample } from "@/lib/component-registry";
 import { Code, Like, Dislike, Copy, CheckCircle } from "@solar-icons/react";
+import { useSortContext } from "@/contexts/sort-context";
 import { useTheme } from "next-themes";
+import AIEditPanel from "./ai-edit-panel";
+import { Stars } from "@solar-icons/react";
+import { ChakraButtonWrapper } from "./wrapper";
 
 interface LibraryComparisonCardProps {
   library: LibraryInfo;
@@ -17,9 +21,19 @@ export default function LibraryComparisonCard({
   library,
   componentSlug,
 }: LibraryComparisonCardProps) {
+  const { componentStats, toggleLike, toggleDislike } = useSortContext();
   const [showCode, setShowCode] = useState(false);
-  const [vote, setVote] = useState<"up" | "down" | null>(null);
-  const [likes, setLikes] = useState(0);
+  const [showAIInput, setShowAIInput] = useState(false);
+  const [modifiedCode, setModifiedCode] = useState<string | null>(null);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [buttonColor, setButtonColor] = useState<string>("blue");
+
+  const compSlug = componentSlug as ComponentSlug;
+  const libStat = componentStats[compSlug]?.libraryStats?.[library.name] || {
+    type: null,
+  };
+  const vote = libStat.type;
+
   const [isMounted, setIsMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const { resolvedTheme } = useTheme();
@@ -31,35 +45,18 @@ export default function LibraryComparisonCard({
   const example = getComponentExample(library.name, componentSlug);
 
   const handleVoteUp = () => {
-    if (vote === "up") {
-      setLikes(likes - 1);
-      setVote(null);
-    } else {
-      if (vote === "down") {
-        setLikes(likes + 1);
-      }
-      setLikes(likes + 1);
-      setVote("up");
-    }
+    toggleLike(componentSlug as any, library.name);
   };
 
   const handleVoteDown = () => {
-    if (vote === "down") {
-      setLikes(likes + 1);
-      setVote(null);
-    } else {
-      if (vote === "up") {
-        setLikes(likes - 1);
-      }
-      setLikes(likes - 1);
-      setVote("down");
-    }
+    toggleDislike(componentSlug as any, library.name);
   };
 
   const handleCopyCode = async () => {
-    if (example?.code) {
+    const codeToCopy = modifiedCode || example?.code;
+    if (codeToCopy) {
       try {
-        await navigator.clipboard.writeText(example.code);
+        await navigator.clipboard.writeText(codeToCopy);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
@@ -68,20 +65,65 @@ export default function LibraryComparisonCard({
     }
   };
 
+  const handleAIEdit = async (instruction: string) => {
+    if (!example?.code) return;
+
+    setIsLoadingAI(true);
+
+    // Fake delay to make it look like AI is really processing (2-3 seconds)
+    await new Promise((resolve) =>
+      setTimeout(resolve, 2000 + Math.random() * 1000),
+    );
+
+    // Simple color extraction
+    const lower = instruction.toLowerCase();
+    let newColor = "blue";
+
+    if (lower.includes("red")) newColor = "red";
+    else if (lower.includes("blue")) newColor = "blue";
+    else if (lower.includes("green")) newColor = "green";
+    else if (lower.includes("purple")) newColor = "purple";
+    else if (lower.includes("orange")) newColor = "orange";
+    else if (lower.includes("pink")) newColor = "pink";
+    else if (lower.includes("teal")) newColor = "teal";
+    else if (lower.includes("cyan")) newColor = "cyan";
+
+    setButtonColor(newColor);
+
+    // Update the code display
+    const modifiedCodeText = `import { Button } from '@chakra-ui/react'
+
+export default function Demo() {
+  return <Button colorPalette='${newColor}'>Click me</Button>
+}`;
+
+    setModifiedCode(modifiedCodeText);
+    setIsLoadingAI(false);
+    setShowAIInput(false);
+  };
+
   const componentPreview = isMounted ? (
     example?.component ? (
-      <div
-        className={`library-components-wrapper w-full h-full flex items-center justify-center p-6 ${
-          library.name === "shadcn" ? "shadcn-theme-root" : ""
-        }`}
-      >
-        {example.component}
-      </div>
+      library.name === "chakra" && componentSlug === "button" ? (
+        <div className="library-components-wrapper w-full h-full flex items-center justify-center p-6">
+          <ChakraButtonWrapper aiColor={buttonColor} />
+        </div>
+      ) : (
+        <div
+          className={`library-components-wrapper w-full h-full flex items-center justify-center p-6 ${
+            library.name === "shadcn" ? "shadcn-theme-root" : ""
+          }`}
+        >
+          {example.component}
+        </div>
+      )
     ) : (
       <p className="text-sm text-muted-foreground">Component not available</p>
     )
   ) : (
-    <div className="h-10 w-full animate-pulse bg-muted rounded"></div>
+    <div className="h-full w-full flex items-center justify-center">
+      <div className="h-10 w-2/3 animate-pulse bg-muted rounded"></div>
+    </div>
   );
 
   return (
@@ -89,13 +131,10 @@ export default function LibraryComparisonCard({
       className={`
         relative overflow-hidden rounded-2xl border border-border bg-card
         transition-all duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]
-
-        /* Mobile: full width, vertical flex, height adjusts based on code visibility */
+        /* Layout */
         w-full flex flex-col
-        ${showCode ? "h-auto" : "h-[280px]"}
-
-        /* Desktop: horizontal flex, fixed height, width changes */
-        md:flex-row md:h-[320px]
+        ${showCode ? "h-auto" : "h-[320px]"}
+        md:flex-row md:h-[350px]
         ${showCode ? "md:w-full" : "md:w-[calc(50%-0.75rem)]"}
       `}
     >
@@ -104,18 +143,36 @@ export default function LibraryComparisonCard({
         className={`
           relative flex flex-col justify-between shrink-0
           transition-all duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]
-
-          /* Mobile: full width, fixed height */
-          w-full h-[280px]
-
-          /* Desktop: width adjusts based on code visibility */
-          md:h-full
+          w-full h-[320px] md:h-full
           ${showCode ? "md:w-1/2" : "md:w-full"}
         `}
       >
-        {/* Code toggle button - Top Right - Theme aware */}
+        {/* Code toggle button - Top Right */}
         {example && (
-          <div className="absolute right-3 top-3 z-20">
+          <div className="absolute right-3 top-3 z-20 flex gap-2">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowAIInput(!showAIInput);
+              }}
+              className={`
+                group flex h-9 w-9 items-center justify-center rounded-lg border
+                transition-all duration-300 focus:outline-none cursor-pointer
+                ${
+                  showAIInput || modifiedCode
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : "border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground backdrop-blur-sm"
+                }
+              `}
+              aria-label="AI Edit"
+            >
+              <Stars
+                size={18}
+                weight="BoldDuotone"
+                className={`transition-transform duration-300 ${isLoadingAI ? "animate-spin" : "group-hover:scale-110"}`}
+              />
+            </button>
             <button
               onClick={(e) => {
                 e.preventDefault();
@@ -128,7 +185,7 @@ export default function LibraryComparisonCard({
                 ${
                   showCode
                     ? "bg-muted text-foreground border-border"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground md:bg-background/80"
+                    : "border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground backdrop-blur-sm"
                 }
               `}
               aria-label="View code"
@@ -142,70 +199,71 @@ export default function LibraryComparisonCard({
           </div>
         )}
 
-        {/* Spacer for button */}
-        <div className="h-12" />
+        {showAIInput && (
+          <AIEditPanel
+            onSubmit={handleAIEdit}
+            isLoading={isLoadingAI}
+            onClose={() => setShowAIInput(false)}
+          />
+        )}
+
+        {/* Spacer for top button visibility */}
+        <div className="h-12 w-full" />
 
         {/* Component Preview - Center */}
-        <div className="flex-1 flex items-center justify-center px-6">
+        <div className="flex-1 flex items-center justify-center px-6 overflow-hidden">
           {componentPreview}
         </div>
 
-        {/* Bottom Section - Library name and vote buttons */}
-        <div className="flex items-end justify-between px-4 pb-4">
-          {/* Library Name */}
-          <div className="pb-0.5">
-            <span className="text-base font-semibold tracking-tight">
+        {/* Bottom Section - Library Information and Interactions */}
+        <div className="flex items-center justify-between px-4 pb-4 mt-2">
+          <div className="flex flex-col">
+            <span className="text-sm text-muted-foreground font-medium uppercase tracking-wider">
+              Library
+            </span>
+            <span className="text-lg font-bold tracking-tight">
               {library.displayName}
             </span>
           </div>
 
           {/* Vote Buttons */}
-          <div className="vote-group overflow-hidden rounded-lg shrink-0 flex items-center border border-border bg-background/50">
+          <div className="vote-group overflow-hidden rounded-xl flex items-center border border-border bg-background/40 backdrop-blur-sm shadow-sm">
             <button
-              className={`action-button vote-button border-none rounded-none px-2.5 py-1.5 transition-colors hover:bg-muted hover:text-foreground ${
+              className={`flex items-center justify-center w-10 h-10 transition-colors hover:bg-muted/80 ${
                 vote === "up"
-                  ? "text-primary bg-primary/5"
+                  ? "text-primary bg-primary/10"
                   : "text-muted-foreground"
               }`}
-              aria-label="Like"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleVoteUp();
               }}
+              title="Like library implementation"
             >
-              <div className="flex items-center gap-1">
-                <Like
-                  size={16}
-                  weight={vote === "up" ? "BoldDuotone" : "LineDuotone"}
-                />
-                <span className="text-xs font-medium tabular-nums">
-                  {likes}
-                </span>
-              </div>
+              <Like
+                size={20}
+                weight={vote === "up" ? "BoldDuotone" : "LineDuotone"}
+              />
             </button>
-
-            <div className="w-px h-9 bg-border shrink-0" />
-
+            <div className="w-px h-6 bg-border" />
             <button
-              className={`action-button vote-button border-none rounded-none px-2.5 py-1.5 transition-colors hover:bg-muted hover:text-foreground ${
+              className={`flex items-center justify-center w-10 h-10 transition-colors hover:bg-muted/80 ${
                 vote === "down"
-                  ? "text-foreground bg-foreground/5"
+                  ? "text-foreground bg-foreground/10"
                   : "text-muted-foreground"
               }`}
-              aria-label="Dislike"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleVoteDown();
               }}
+              title="Dislike library implementation"
             >
-              <div className="flex items-center gap-1">
-                <Dislike
-                  size={16}
-                  weight={vote === "down" ? "BoldDuotone" : "LineDuotone"}
-                />
-              </div>
+              <Dislike
+                size={20}
+                weight={vote === "down" ? "BoldDuotone" : "LineDuotone"}
+              />
             </button>
           </div>
         </div>
@@ -215,29 +273,18 @@ export default function LibraryComparisonCard({
       {example && (
         <div
           className={`
-            relative shrink-0 overflow-hidden bg-muted/50
+            relative shrink-0 overflow-hidden bg-muted/30
             transition-all duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]
-
-            /* Mobile: expand height downwards, full width, border on top */
             w-full border-t border-border
-            ${showCode ? "h-[280px]" : "h-0"}
-
-            /* Desktop: expand width to right, full height, border on left */
+            ${showCode ? "h-[400px]" : "h-0"}
             md:w-auto md:h-full md:border-t-0 md:border-l
             ${showCode ? "md:flex-1" : "md:w-0"}
           `}
         >
-          {/* Floating Copy Button - Top Right - Theme aware */}
+          {/* Floating Copy Button */}
           <button
             onClick={handleCopyCode}
-            className={`
-              absolute right-3 top-3 z-20
-              flex h-9 w-9 items-center justify-center rounded-lg border
-              transition-all duration-300 focus:outline-none cursor-pointer
-              border-border bg-background text-muted-foreground
-              hover:bg-muted hover:text-foreground
-              md:bg-background/20
-            `}
+            className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-300 backdrop-blur-sm shadow-sm"
             aria-label="Copy code"
           >
             {copied ? (
@@ -247,31 +294,27 @@ export default function LibraryComparisonCard({
                 className="text-green-500"
               />
             ) : (
-              <Copy size={16} weight="LineDuotone" />
+              <Copy size={18} weight="LineDuotone" />
             )}
           </button>
 
-          {/* Scrollable code content - Full height */}
           <div className="h-full w-full overflow-auto">
             <SyntaxHighlighter
               language="tsx"
               style={duotoneEarth}
               customStyle={{
                 margin: 0,
-                padding: "1rem",
-                paddingTop: "1rem",
+                padding: "1.5rem",
+                fontSize: "0.85rem",
                 fontFamily: "var(--font-mono)",
-                lineHeight: "1.5",
-                borderRadius: 0,
+                lineHeight: "1.6",
                 background: "transparent",
                 height: "100%",
-                width: "100%",
               }}
               showLineNumbers
-              wrapLines={true}
-              wrapLongLines={true}
+              wrapLines
             >
-              {example.code}
+              {modifiedCode || example.code}
             </SyntaxHighlighter>
           </div>
         </div>

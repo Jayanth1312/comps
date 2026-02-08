@@ -3,11 +3,12 @@
 import { Library } from "@solar-icons/react";
 import { SignupForm } from "@/components/signup-form";
 import Beams from "@/components/Beams";
+import ThemeToggle from "@/app/components/theme-toggle";
 
 export default function SignupPage() {
   return (
-    <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="relative hidden lg:block overflow-hidden bg-background">
+    <div className="grid min-h-svh lg:grid-cols-2 bg-white dark:bg-black text-black dark:text-white">
+      <div className="relative hidden lg:block overflow-hidden bg-white dark:bg-black border-r border-neutral-200 dark:border-neutral-800">
         <div className="w-full h-full opacity-60">
           <Beams
             beamWidth={3}
@@ -28,16 +29,17 @@ export default function SignupPage() {
         <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-background to-transparent z-10" />
       </div>
       <div className="flex flex-col gap-4 p-6 md:p-10">
-        <div className="md:justify-start">
+        <div className="flex items-center justify-between">
           <a
             href="/"
-            className="flex items-center gap-1 font-medium group text-foreground/80 hover:text-foreground transition-colors"
+            className="flex items-center gap-1 font-medium group text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors"
           >
-            <div className="flex size-7 items-center justify-center text-primary group-hover:scale-110 transition-transform">
+            <div className="flex size-7 items-center justify-center text-black dark:text-white group-hover:scale-110 transition-transform">
               <Library weight="BoldDuotone" size={20} />
             </div>
             <span className="text-xl font-bold tracking-tight">Comps Inc.</span>
           </a>
+          <ThemeToggle />
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs">

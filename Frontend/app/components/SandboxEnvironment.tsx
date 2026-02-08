@@ -14,6 +14,7 @@ import { ecoLight, gruvboxDark } from "@codesandbox/sandpack-themes";
 
 interface SandboxEnvironmentProps {
   code: string;
+  library?: string;
   language?: string;
   onCodeChange?: (code: string) => void;
 }
@@ -53,6 +54,7 @@ function SandpackListener({
 
 export default function SandboxEnvironment({
   code,
+  library = "default",
   language = "tsx",
   onCodeChange,
   mode = "full",
@@ -64,15 +66,251 @@ export default function SandboxEnvironment({
     setMounted(true);
   }, []);
 
-  // Use useMemo for files so it updates when code prop changes
+  // Use useMemo for files so it updates when code or library changes
   const files = React.useMemo(() => {
+    const lib = library.toLowerCase();
+
+    // Determine the wrapper code for Providers
+    let appCode = "";
+
+    if (lib === "mui" || lib.includes("material")) {
+      appCode = `
+import React from 'react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import * as ComponentModule from './Component';
+
+const Component = ComponentModule.default ||
+                 Object.entries(ComponentModule).find(([key, val]) => typeof val === 'function' && /^[A-Z]/.test(key) && key !== 'Icon' && key !== 'cn')?.[1] ||
+                 Object.values(ComponentModule).find(val => typeof val === 'function');
+const theme = createTheme({
+  palette: {
+    mode: '${resolvedTheme === "dark" ? "dark" : "light"}',
+  },
+});
+
+export default function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <div style={{ padding: '2rem', minHeight: '100vh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {Component ? <Component /> : <div>Component not found</div>}
+      </div>
+    </ThemeProvider>
+  );
+}`;
+    } else if (lib === "chakra" || lib === "chakraui") {
+      appCode = `
+import React from 'react';
+import { ChakraProvider } from "@chakra-ui/react";
+import * as ComponentModule from './Component';
+
+// Improved component discovery: find the default export first, then the first capitalized function
+const Component = ComponentModule.default ||
+                 Object.entries(ComponentModule).find(([key, val]) => typeof val === 'function' && /^[A-Z]/.test(key) && key !== 'Icon' && key !== 'cn')?.[1] ||
+                 Object.values(ComponentModule).find(val => typeof val === 'function');
+
+export default function App() {
+  return (
+    <ChakraProvider>
+      <div style={{ padding: '2rem', minHeight: '100vh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {Component ? <Component /> : <div>Component not found</div>}
+      </div>
+    </ChakraProvider>
+  );
+}`;
+    } else if (lib === "mantine") {
+      appCode = `
+import React from 'react';
+import { MantineProvider } from '@mantine/core';
+import '@mantine/core/styles.css';
+import * as ComponentModule from './Component';
+
+const Component = ComponentModule.default ||
+                 Object.entries(ComponentModule).find(([key, val]) => typeof val === 'function' && /^[A-Z]/.test(key) && key !== 'Icon' && key !== 'cn')?.[1] ||
+                 Object.values(ComponentModule).find(val => typeof val === 'function');
+
+export default function App() {
+  return (
+    <MantineProvider forceColorScheme="${resolvedTheme === "dark" ? "dark" : "light"}">
+      <div style={{ padding: '2rem', minHeight: '100vh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {Component ? <Component /> : <div>Component not found</div>}
+      </div>
+    </MantineProvider>
+  );
+}`;
+    } else if (lib === "antd") {
+      appCode = `
+import React from 'react';
+import { ConfigProvider, theme } from 'antd';
+import enUS from 'antd/locale/en_US';
+import * as ComponentModule from './Component';
+
+const Component = ComponentModule.default ||
+                 Object.entries(ComponentModule).find(([key, val]) => typeof val === 'function' && /^[A-Z]/.test(key) && key !== 'Icon' && key !== 'cn')?.[1] ||
+                 Object.values(ComponentModule).find(val => typeof val === 'function');
+
+export default function App() {
+  return (
+    <ConfigProvider
+      locale={enUS}
+      theme={{ algorithm: theme.${resolvedTheme === "dark" ? "darkAlgorithm" : "defaultAlgorithm"} }}
+    >
+      <div style={{ padding: '2rem', minHeight: '100vh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {Component ? <Component /> : <div>Component not found</div>}
+      </div>
+    </ConfigProvider>
+  );
+}`;
+    } else {
+      // Default / Shadcn / DaisyUI path
+      appCode = `
+import React from 'react';
+import * as ComponentModule from './Component';
+
+const Component = ComponentModule.default ||
+                 Object.entries(ComponentModule).find(([key, val]) => typeof val === 'function' && /^[A-Z]/.test(key) && key !== 'Icon' && key !== 'cn')?.[1] ||
+                 Object.values(ComponentModule).find(val => typeof val === 'function');
+
+export default function App() {
+  return (
+    <div className="${resolvedTheme === "dark" ? "dark" : ""}" style={{ padding: '2rem', minHeight: '100vh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {Component ? <Component /> : <div>Component not found</div>}
+    </div>
+  );
+}`;
+    }
+
     return {
-      "/App.tsx": code,
+      "/App.tsx": appCode,
+      "/index.tsx": `
+import React from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+
+const root = createRoot(document.getElementById("root"));
+root.render(<App />);`,
+      "/Component.tsx": code,
+      "/lib/utils.ts": `
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}`,
+      "/public/index.html": `
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sandbox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              border: "hsl(var(--border))",
+              input: "hsl(var(--input))",
+              ring: "hsl(var(--ring))",
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              primary: {
+                DEFAULT: "hsl(var(--primary))",
+                foreground: "hsl(var(--primary-foreground))",
+              },
+              secondary: {
+                DEFAULT: "hsl(var(--secondary))",
+                foreground: "hsl(var(--secondary-foreground))",
+              },
+              destructive: {
+                DEFAULT: "hsl(var(--destructive))",
+                foreground: "hsl(var(--destructive-foreground))",
+              },
+              muted: {
+                DEFAULT: "hsl(var(--muted))",
+                foreground: "hsl(var(--muted-foreground))",
+              },
+              accent: {
+                DEFAULT: "hsl(var(--accent))",
+                foreground: "hsl(var(--accent-foreground))",
+              },
+              popover: {
+                DEFAULT: "hsl(var(--popover))",
+                foreground: "hsl(var(--popover-foreground))",
+              },
+              card: {
+                DEFAULT: "hsl(var(--card))",
+                foreground: "hsl(var(--card-foreground))",
+              },
+            },
+            borderRadius: {
+              lg: "var(--radius)",
+              md: "calc(var(--radius) - 2px)",
+              sm: "calc(var(--radius) - 4px)",
+            },
+          },
+        },
+      }
+    </script>
+    <style type="text/css">
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 32% 91.4%;
+        --input: 214.3 32% 91.4%;
+        --ring: 222.2 84% 4.9%;
+        --radius: 0.5rem;
+      }
+      .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222.2 84% 4.9%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 210 40% 98%;
+        --primary-foreground: 222.2 47.4% 11.2%;
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 212.7 26.8% 83.9%;
+      }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@latest/dist/full.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="${resolvedTheme === "dark" ? "dark" : ""}" style="background: transparent;">
+    <div id="root"></div>
+  </body>
+</html>
+      `,
     };
-  }, [code]);
+  }, [code, library, resolvedTheme]);
 
   const sandpackTheme = useMemo(() => {
-    // Extra fallback check for "dark" class on document
     const isDark =
       resolvedTheme === "dark" ||
       (typeof document !== "undefined" &&
@@ -88,6 +326,8 @@ export default function SandboxEnvironment({
         "sp-layout": "custom-layout",
         "sp-tab-button": "!font-sans",
       },
+      // Ensure the entry point is correctly set for our file structure
+      main: "/index.tsx",
     }),
     [],
   );
@@ -101,12 +341,48 @@ export default function SandboxEnvironment({
         clsx: "latest",
         "tailwind-merge": "latest",
         "@mui/material": "latest",
+        "@mui/icons-material": "latest",
         "@emotion/react": "latest",
         "@emotion/styled": "latest",
-        "@chakra-ui/react": "latest",
-        antd: "latest",
+        "@chakra-ui/react": "^2.10.3",
+        antd: "^5.23.0",
+        dayjs: "latest",
+        "@rc-component/picker": "latest",
+        "@rc-component/util": "latest",
+        "@rc-component/context": "latest",
+        "@rc-component/trigger": "latest",
+        "@rc-component/mini-decimal": "latest",
+        "@rc-component/portal": "latest",
+        "@rc-component/mutate-observer": "latest",
+        "@rc-component/tour": "latest",
+        "rc-util": "latest",
+        "rc-pagination": "latest",
+        "rc-picker": "latest",
+        "rc-notification": "latest",
+        "rc-tooltip": "latest",
+        "rc-table": "latest",
+        "@ant-design/icons": "latest",
+        "@ant-design/colors": "latest",
+        "@ant-design/cssinjs": "latest",
         "@mantine/core": "latest",
         "@mantine/hooks": "latest",
+        "@mantine/dates": "latest",
+        "date-fns": "latest",
+        "react-daisyui": "latest",
+        "@radix-ui/react-slot": "latest",
+        "@radix-ui/react-dropdown-menu": "latest",
+        "@radix-ui/react-dialog": "latest",
+        "@radix-ui/react-tabs": "latest",
+        "@radix-ui/react-popover": "latest",
+        "@radix-ui/react-tooltip": "latest",
+        "@radix-ui/react-select": "latest",
+        "@radix-ui/react-checkbox": "latest",
+        "@radix-ui/react-label": "latest",
+        "@radix-ui/react-avatar": "latest",
+        "@radix-ui/react-separator": "latest",
+        "@radix-ui/react-scroll-area": "latest",
+        "@radix-ui/react-accordion": "latest",
+        "@radix-ui/react-collapsible": "latest",
       },
     }),
     [],
@@ -186,7 +462,11 @@ export default function SandboxEnvironment({
         template="react-ts"
         theme={sandpackTheme}
         files={files}
-        options={options}
+        options={{
+          ...options,
+          activeFile: "/Component.tsx",
+          visibleFiles: ["/Component.tsx"],
+        }}
         customSetup={customSetup}
       >
         <SandpackListener onCodeChange={onCodeChange} />
@@ -197,12 +477,12 @@ export default function SandboxEnvironment({
               showInlineErrors
               wrapContent
               closableTabs={false}
-              showTabs={true}
+              showTabs={false}
             />
           )}
           {(mode === "full" || mode === "preview") && (
             <SandpackPreview
-              showNavigator={true}
+              showNavigator={false}
               showRefreshButton={true}
               showOpenInCodeSandbox={false}
             />

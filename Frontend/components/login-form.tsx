@@ -83,7 +83,7 @@ export function LoginForm({
     >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-black dark:text-white">
             Login to your account
           </h1>
           <p className="text-muted-foreground text-sm text-balance">
@@ -143,7 +143,7 @@ export function LoginForm({
         <Field>
           <Button
             type="submit"
-            className="w-full h-11 text-base font-semibold"
+            className="w-full h-11 text-base font-semibold bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-opacity"
             disabled={isLoading}
           >
             {isLoading ? "Signing in..." : "Login"}
@@ -154,7 +154,7 @@ export function LoginForm({
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="underline underline-offset-4 text-primary font-medium hover:text-primary/80 transition-colors"
+              className="underline underline-offset-4 text-black dark:text-white font-medium hover:opacity-80 transition-opacity"
             >
               Sign up
             </Link>

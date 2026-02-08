@@ -6,52 +6,23 @@ import { Heart, Like, Dislike } from "@solar-icons/react";
 import { ComponentSkeleton } from "./component-skeletons";
 import { useSortContext } from "@/contexts/sort-context";
 import BaseCard from "./base-card";
+import { cn } from "@/lib/utils";
 
 interface ComponentCardProps {
   component: ComponentInfo;
   className?: string;
 }
 
-import { cn } from "@/lib/utils";
-
 export default function ComponentCard({
   component,
   className = "",
 }: ComponentCardProps) {
-  const { componentStats, toggleFavorite, incrementLikes, decrementLikes } =
-    useSortContext();
+  const { componentStats, toggleFavorite } = useSortContext();
 
   const isFavorite = componentStats[component.slug]?.isFavorite || false;
   const likes = componentStats[component.slug]?.likes || 0;
-  const [vote, setVote] = React.useState<"up" | "down" | null>(null);
 
   const isSmall = component.cols <= 4 && component.rows <= 2;
-
-  const handleVoteUp = () => {
-    if (vote === "up") {
-      decrementLikes(component.slug);
-      setVote(null);
-    } else {
-      if (vote === "down") {
-        incrementLikes(component.slug);
-      }
-      incrementLikes(component.slug);
-      setVote("up");
-    }
-  };
-
-  const handleVoteDown = () => {
-    if (vote === "down") {
-      incrementLikes(component.slug);
-      setVote(null);
-    } else {
-      if (vote === "up") {
-        decrementLikes(component.slug);
-      }
-      decrementLikes(component.slug);
-      setVote("down");
-    }
-  };
 
   // Top-right slot: Favorite button
   const favoriteButton = (
@@ -87,45 +58,43 @@ export default function ComponentCard({
     </h3>
   );
 
-  // Bottom-right slot: Like/Dislike buttons
+  const hasLiked = componentStats[component.slug]?.hasLiked || false;
+  const hasDisliked = componentStats[component.slug]?.hasDisliked || false;
+
+  // Bottom-right slot: Like/Dislike (Read-only on Explore)
   const voteButtons = (
-    <div className="vote-group overflow-hidden rounded-lg shrink-0">
-      <button
-        className={`action-button vote-button border-none rounded-none ${vote === "up" ? "text-primary bg-primary/5" : ""}`}
-        aria-label="Like"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleVoteUp();
-        }}
+    <div className="vote-group overflow-hidden rounded-lg shrink-0 flex items-center border border-border bg-background/50">
+      <div
+        className={`action-button vote-button border-none rounded-none cursor-default px-2.5 py-1.5 ${
+          hasLiked
+            ? "text-primary bg-primary/10"
+            : "text-muted-foreground opacity-70"
+        }`}
+        title="Total likes"
       >
         <div className="flex items-center gap-1">
-          <Like
-            size={16}
-            weight={vote === "up" ? "BoldDuotone" : "LineDuotone"}
-          />
+          <Like size={16} weight={hasLiked ? "BoldDuotone" : "LineDuotone"} />
           <span className="text-xs font-medium tabular-nums">{likes}</span>
         </div>
-      </button>
+      </div>
 
-      <div className="w-px h-9 bg-border shrink-0" />
+      <div className="w-px h-6 bg-border shrink-0" />
 
-      <button
-        className={`action-button vote-button border-none rounded-none ${vote === "down" ? "text-foreground bg-foreground/5" : ""}`}
-        aria-label="Dislike"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleVoteDown();
-        }}
+      <div
+        className={`action-button vote-button border-none rounded-none cursor-default px-2.5 py-1.5 ${
+          hasDisliked
+            ? "text-foreground bg-foreground/10"
+            : "text-muted-foreground opacity-70"
+        }`}
+        title="Total dislikes"
       >
         <div className="flex items-center gap-1">
           <Dislike
             size={16}
-            weight={vote === "down" ? "BoldDuotone" : "LineDuotone"}
+            weight={hasDisliked ? "BoldDuotone" : "LineDuotone"}
           />
         </div>
-      </button>
+      </div>
     </div>
   );
 

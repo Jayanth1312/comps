@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { ArrowUp, Paperclip2, CloudUpload, Gallery } from "@solar-icons/react";
+import {
+  ArrowUp,
+  Paperclip2,
+  CloudUpload,
+  Gallery,
+  Refresh,
+} from "@solar-icons/react";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +22,7 @@ interface AIInputProps {
   onChange: (value: string) => void;
   onSend: (text: string, images: string[]) => void;
   onNewChat?: () => void;
+  onRetry?: () => void;
   placeholder?: string;
   disabled?: boolean;
   isLoading?: boolean;
@@ -26,6 +33,7 @@ export default function AIInput({
   onChange,
   onSend,
   onNewChat,
+  onRetry,
   placeholder = "Ask AI to build something...",
   disabled = false,
   isLoading = false,
@@ -207,6 +215,22 @@ export default function AIInput({
             rows={1}
             disabled={disabled}
           />
+
+          {onRetry && !isLoading && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="px-2 pb-2"
+            >
+              <button
+                onClick={onRetry}
+                className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-600 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-full transition-all cursor-pointer w-fit"
+              >
+                <Refresh size={14} weight="Bold" />
+                <span>Last request failed. Try again?</span>
+              </button>
+            </motion.div>
+          )}
 
           <div className="flex items-center justify-between gap-2 mt-1">
             <button

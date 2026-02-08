@@ -1,0 +1,18 @@
+[dotenv@17.2.4] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  load multiple .env files with { path: ['.env.local', '.env'] }
+Server is running on port 3001
+ 7 |       if (typeof entryNamespace?.default?.fetch === 'function')  {
+ 8 |         const server = Bun.serve(entryNamespace.default);
+ 9 |         console.debug(`Started ${server.development ? 'development ' : ''}server: ${server.protocol}://${server.hostname}:${server.port}`);
+10 |       }
+11 |    }, reportError);
+12 |    const server = Bun.serve(entryNamespace.default);
+     ^
+error: Failed to start server. Is port 3001 in use?
+ syscall: "listen",
+   errno: 0,
+    code: "EADDRINUSE"
+
+      at bun:main:12:28
+      at loadAndEvaluateModule (2:1)
+
+Bun v1.3.0 (Windows x64)

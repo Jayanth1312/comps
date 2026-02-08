@@ -500,6 +500,7 @@ export default function CodeExpansionPanel({
               <SandboxEnvironment
                 key={`${messageId}-${selectedLibrary}-${resolvedTheme}`} // Force re-mount on message, library OR theme change
                 code={currentCode}
+                library={selectedLibrary}
                 language={currentVariant.language}
                 onCodeChange={setCurrentCode}
                 mode={activeTab === "sandbox" ? "full" : "preview"}

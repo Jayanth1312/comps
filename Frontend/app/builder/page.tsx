@@ -3,7 +3,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Login, User, Logout, ChatLine } from "@solar-icons/react";
+import {
+  ArrowLeft,
+  Login,
+  User,
+  Logout,
+  ChatLine,
+  Library,
+} from "@solar-icons/react";
 import ThemeToggle from "@/app/components/theme-toggle";
 import { useAuth } from "@/contexts/AuthContext";
 import UserMessage from "@/app/components/UserMessage";
@@ -43,6 +50,7 @@ interface Message {
   type: MessageType;
   codeBlock?: CodeBlock; // Legacy support
   codeVariants?: CodeVariant[]; // New support
+  images?: string[];
 }
 
 const INITIAL_MESSAGES: Message[] = [
@@ -68,6 +76,7 @@ export default function BuilderPage() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [chatSessionId, setChatSessionId] = useState<string>("");
+  const [generationError, setGenerationError] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Resize state
@@ -166,7 +175,11 @@ export default function BuilderPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = async (text?: string, images?: string[]) => {
+  const handleSendMessage = async (
+    text?: string,
+    images?: string[],
+    insertAfterId?: string,
+  ) => {
     if (!user) {
       setIsAuthDialogOpen(true);
       return;
@@ -174,15 +187,29 @@ export default function BuilderPage() {
     const messageContent = text || inputValue;
     if (!messageContent.trim() && (!images || images.length === 0)) return;
 
+    setGenerationError(false);
+
     // Add user message
     const newMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: messageContent,
       type: "text",
+      images: images || [],
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => {
+      if (insertAfterId) {
+        const index = prev.findIndex((m) => m.id === insertAfterId);
+        if (index !== -1) {
+          const newMessages = [...prev];
+          newMessages.splice(index + 1, 0, newMessage);
+          return newMessages;
+        }
+      }
+      return [...prev, newMessage];
+    });
+
     setInputValue("");
     setIsLoading(true);
 
@@ -247,7 +274,13 @@ export default function BuilderPage() {
       };
 
       setMessages((prev) => {
-        const newMessages = [...prev, aiMessage];
+        const index = prev.findIndex((m) => m.id === newMessage.id);
+        const newMessages = [...prev];
+        if (index !== -1) {
+          newMessages.splice(index + 1, 0, aiMessage);
+        } else {
+          newMessages.push(aiMessage);
+        }
 
         // If the panel was open on the message we just followed up on,
         // update it to the new AI message to keep the view "live".
@@ -283,7 +316,17 @@ export default function BuilderPage() {
         content: "Sorry, something went wrong while generating the component.",
         type: "text",
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) => {
+        const index = prev.findIndex((m) => m.id === newMessage.id);
+        const newMessages = [...prev];
+        if (index !== -1) {
+          newMessages.splice(index + 1, 0, errorMessage);
+        } else {
+          newMessages.push(errorMessage);
+        }
+        return newMessages;
+      });
+      setGenerationError(true);
     } finally {
       setIsLoading(false);
     }
@@ -370,7 +413,7 @@ export default function BuilderPage() {
       >
         {/* Header Elements (Fixed) */}
         <div className="fixed top-0 left-0 w-full z-40 pointer-events-none p-4 md:p-6 flex justify-between items-start transition-all">
-          <div className="pointer-events-auto">
+          <div className="pointer-events-auto flex items-center gap-4">
             <button
               onClick={() => router.back()}
               className="p-3 bg-muted/20 backdrop-blur-sm border border-border/50 hover:bg-muted/30 transition-all rounded-md cursor-pointer"
@@ -381,6 +424,20 @@ export default function BuilderPage() {
                 className="text-muted-foreground hover:text-foreground"
               />
             </button>
+            <Link
+              href="/"
+              className="flex items-center gap-2 bg-muted/20 backdrop-blur-sm border border-border/50 hover:bg-muted/30 transition-all duration-300 px-3 py-3 rounded-full"
+            >
+              <div className="">
+                <Library
+                  weight="BoldDuotone"
+                  className="w-5 h-5 text-black dark:text-white"
+                />
+              </div>
+              <span className="font-semibold text-lg tracking-tight sm:block text-black dark:text-white md:inline hidden">
+                Comps Inc.
+              </span>
+            </Link>
           </div>
 
           {/* Theme Toggle & Auth */}
@@ -426,6 +483,16 @@ export default function BuilderPage() {
                   <UserMessage
                     key={`${msg.id}-${index}`}
                     content={msg.content}
+                    images={msg.images}
+                    onCopy={() => {
+                      navigator.clipboard.writeText(msg.content);
+                    }}
+                    onResend={() =>
+                      handleSendMessage(msg.content, msg.images, msg.id)
+                    }
+                    onEdit={(newContent) =>
+                      handleSendMessage(newContent, msg.images, msg.id)
+                    }
                   />
                 );
               }
