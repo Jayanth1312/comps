@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { API_BASE_URL } from "@/lib/config";
 
 interface HistorySession {
   _id: string;
@@ -51,7 +52,7 @@ export default function HistoryDrawer({
   const loadHistory = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/api/history", {
+      const response = await fetch(`${API_BASE_URL}/api/history`, {
         headers: {
           Authorization: `Bearer ${sessionId}`,
         },
@@ -72,7 +73,7 @@ export default function HistoryDrawer({
     if (!confirm("Are you sure you want to delete this chat?")) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/history/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/history/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${sessionId}`,

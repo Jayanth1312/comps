@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import UserMessage from "@/app/components/UserMessage";
 import AIMessage from "@/app/components/AIMessage";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/config";
 import AIInput from "@/app/components/AIInput";
 import CodeCard from "@/app/components/CodeCard";
 import CodeExpansionPanel from "@/app/components/CodeExpansionPanel";
@@ -214,7 +215,7 @@ export default function BuilderPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3001/api/generate", {
+      const response = await fetch(`${API_BASE_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

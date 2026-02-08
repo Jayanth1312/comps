@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { ComponentSlug, COMPONENTS } from "@/types/component-data";
 import { useAuth } from "./AuthContext";
+import { API_BASE_URL } from "@/lib/config";
 
 export type SortOption = "a-z" | "z-a" | "popularity" | "favorites";
 
@@ -34,7 +35,7 @@ interface SortContextType {
 
 const SortContext = createContext<SortContextType | undefined>(undefined);
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = `${API_BASE_URL}/api`;
 
 export function SortProvider({ children }: { children: ReactNode }) {
   const [sortBy, setSortBy] = useState<SortOption>("a-z");

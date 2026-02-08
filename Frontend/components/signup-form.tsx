@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Letter, LockPassword, UserPlus } from "@solar-icons/react";
+import { API_BASE_URL } from "@/lib/config";
 
 export function SignupForm({
   className,
@@ -63,7 +64,7 @@ export function SignupForm({
     }
 
     try {
-      const response = await fetch("http://localhost:3001/api/auth/signup", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
