@@ -407,7 +407,7 @@ export default function BuilderPage() {
             {user && (
               <button
                 onClick={() => setIsHistoryOpen(true)}
-                className="flex items-center gap-2 px-4 py-4 bg-muted/50 hover:bg-muted text-foreground rounded-md text-[14px] font-semibold transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-3 bg-muted/50 hover:bg-muted text-foreground rounded-md text-[14px] font-semibold transition-all cursor-pointer"
               >
                 <ClockCircle weight="BoldDuotone" size={18} />
                 <span className="hidden sm:inline">History</span>
@@ -416,7 +416,7 @@ export default function BuilderPage() {
             {user ? (
               <button
                 onClick={logout}
-                className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="flex items-center gap-2 px-4 py-3 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 <Logout weight="BoldDuotone" size={18} />
                 <span>Logout</span>
@@ -425,7 +425,7 @@ export default function BuilderPage() {
               <>
                 <Link
                   href={`/login?redirect=${encodeURIComponent(pathname)}`}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="flex items-center gap-2 px-4 py-3 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   <Login weight="BoldDuotone" size={18} />
                   <span>Login</span>
