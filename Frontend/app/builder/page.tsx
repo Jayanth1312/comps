@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -65,6 +65,7 @@ const INITIAL_MESSAGES: Message[] = [
 
 export default function BuilderPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuth();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
@@ -203,9 +204,8 @@ export default function BuilderPage() {
       if (insertAfterId) {
         const index = prev.findIndex((m) => m.id === insertAfterId);
         if (index !== -1) {
-          const newMessages = [...prev];
-          newMessages.splice(index + 1, 0, newMessage);
-          return newMessages;
+          // Truncate the messages: keep everything before the edited message
+          return [...prev.slice(0, index), newMessage];
         }
       }
       return [...prev, newMessage];
@@ -463,7 +463,7 @@ export default function BuilderPage() {
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href={`/login?redirect=${encodeURIComponent(pathname)}`}
                   className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-md text-[14px] font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   <Login weight="BoldDuotone" size={18} />

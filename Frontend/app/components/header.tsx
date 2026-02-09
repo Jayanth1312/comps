@@ -11,11 +11,11 @@ import {
   Heart,
   Sledgehammer,
   SimCard,
-  ArrowRight,
+  Login
 } from "@solar-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "./theme-toggle";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { COMPONENTS } from "@/types/component-data";
 import Fuse from "fuse.js";
@@ -45,6 +45,7 @@ export default function Header({
   const [activeIndex, setActiveIndex] = useState(0);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const { setSortBy } = useSortContext();
 
   const fuse = new Fuse(COMPONENTS, {
@@ -283,6 +284,17 @@ export default function Header({
                 >
                   <Sledgehammer weight="BoldDuotone" size={20} />
                   <span className="text-[15px] hidden md:inline">Builder</span>
+                </Link>
+              )}
+
+              {/* Login Button (if not logged in) */}
+              {!showBuilder && (
+                <Link
+                  href={`/login?redirect=${encodeURIComponent(pathname)}`}
+                  className="bg-foreground text-background border border-border/50 hover:opacity-90 transition-all duration-300 font-normal px-4 py-3 rounded-md flex items-center justify-center cursor-pointer active:scale-[0.98] gap-2 pointer-events-auto"
+                >
+                  <Login weight="BoldDuotone" size={20} />
+                  <span className="text-[15px] hidden md:inline">Login</span>
                 </Link>
               )}
 

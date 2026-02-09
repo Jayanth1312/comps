@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { Check, X, ChevronDown } from "lucide-react";
 import {
   Code,
   Eye,
@@ -22,7 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/app/components/dropdown-menu";
-import SandboxEnvironment from "./SandboxEnvironment";
+// import SandboxEnvironment from "./SandboxEnvironment";
+import IframePreview from "./IframePreview";
 import {
   Tooltip,
   TooltipContent,
@@ -63,6 +64,90 @@ const LIBRARY_ORDER = [
   "mantine",
 ];
 
+const CodeCard = ({
+  variant,
+  onCopy,
+}: {
+  variant: CodeVariant;
+  onCopy: (code: string) => void;
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleLocalCopy = () => {
+    onCopy(variant.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="border-b border-border/40 bg-muted/2 group last:border-b-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/10">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {variant.library}
+          </span>
+        </div>
+        <button
+          onClick={handleLocalCopy}
+          className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-muted/40 hover:bg-muted transition-all text-[11px] font-bold cursor-pointer border border-border/20 opacity-0 group-hover:opacity-100"
+        >
+          {copied ? (
+            <Check size={12} className="text-green-500" />
+          ) : (
+            <Copy weight="LineDuotone" size={12} />
+          )}
+          <span>{copied ? "COPIED" : "COPY"}</span>
+        </button>
+      </div>
+      <div className="relative">
+        <SyntaxHighlighter
+          language={variant.language}
+          style={duotoneEarth}
+          customStyle={{
+            background: "transparent",
+            margin: 0,
+            padding: "1rem 1.5rem",
+            fontSize: "13px",
+            width: "100%",
+            overflow: "visible",
+          }}
+          showLineNumbers={true}
+          wrapLongLines={true}
+        >
+          {variant.code}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
+};
+
+const PreviewCard = ({
+  variant,
+  resolvedTheme,
+  messageId,
+}: {
+  variant: CodeVariant;
+  resolvedTheme: string;
+  messageId?: string;
+}) => {
+  return (
+    <div className="border-b border-border/40 bg-muted/2 h-[450px] flex flex-col last:border-b-0">
+      <div className="px-4 py-2 bg-muted/10 flex items-center gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {variant.library} Preview
+        </span>
+      </div>
+      <div className="flex-1 bg-background relative overflow-hidden">
+        <IframePreview
+          code={variant.code}
+          library={variant.library}
+          key={`${messageId}-${variant.library}-${resolvedTheme}`}
+        />
+      </div>
+    </div>
+  );
+};
+
 export default function CodeExpansionPanel({
   isOpen,
   onClose,
@@ -102,6 +187,37 @@ export default function CodeExpansionPanel({
     selectedVariant?.library ||
       (sortedVariants.length > 0 ? sortedVariants[0].library : "default"),
   );
+
+  // Staggered loading state to prevent "Thundering Herd" timeouts
+  const [warmedLibraries, setWarmedLibraries] = useState<Set<string>>(
+    new Set([
+      selectedVariant?.library?.toLowerCase() ||
+        (sortedVariants.length > 0
+          ? sortedVariants[0].library.toLowerCase()
+          : "default"),
+    ]),
+  );
+
+  // Stagger the loading of other libraries to avoid TIME_OUT errors
+  React.useEffect(() => {
+    if (sortedVariants.length <= 1) return;
+
+    const timer = setTimeout(() => {
+      const nextToWarm = sortedVariants.find(
+        (v) => !warmedLibraries.has(v.library.toLowerCase()),
+      );
+
+      if (nextToWarm) {
+        setWarmedLibraries((prev) => {
+          const next = new Set(prev);
+          next.add(nextToWarm.library.toLowerCase());
+          return next;
+        });
+      }
+    }, 4000); // 4000ms stagger delay (Increased for better reliability)
+
+    return () => clearTimeout(timer);
+  }, [sortedVariants, warmedLibraries]);
 
   // Track reference values for stable sync
   const lastPropVariantRef = React.useRef<CodeVariant | undefined>(
@@ -286,7 +402,7 @@ export default function CodeExpansionPanel({
                     />
                   </button>
 
-                  {/* Sandbox Tab */}
+                  {/* Sandbox Tab (Commented for future use)
                   <button
                     onClick={() => onActiveTabChange("sandbox")}
                     className={cn(
@@ -317,6 +433,7 @@ export default function CodeExpansionPanel({
                       className="relative z-10"
                     />
                   </button>
+                  */}
                 </div>
 
                 {/* Component Info Label  */}
@@ -350,101 +467,109 @@ export default function CodeExpansionPanel({
                 </TooltipProvider>
               )}
 
-              <div className="flex items-center bg-muted/80 rounded-md border border-border/50 overflow-hidden h-10 shadow-sm">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleCopy();
-                  }}
-                  className="flex items-center gap-2 px-4 h-full hover:bg-muted transition-all text-sm font-semibold cursor-pointer"
-                >
-                  {copied ? (
-                    <>
-                      <Unread
-                        weight="BoldDuotone"
-                        className="text-green-500"
-                        size={16}
-                      />
-                      <span className="text-green-500">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy weight="LineDuotone" size={16} />
-                      Copy
-                    </>
-                  )}
-                </button>
-                <div className="w-px h-6 bg-border/50" />
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="px-2.5 h-full hover:bg-muted transition-all cursor-pointer flex items-center justify-center border-l border-border/50">
-                      <ChevronDown
-                        size={16}
-                        className="text-muted-foreground"
-                      />
+              {/* Sandbox Actions (Commented for future use)
+              activeTab === "sandbox" && (
+                <>
+                  <div className="flex items-center bg-muted/80 rounded-md border border-border/50 overflow-hidden h-10 shadow-sm">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCopy();
+                      }}
+                      className="flex items-center gap-2 px-4 h-full hover:bg-muted transition-all text-sm font-semibold cursor-pointer"
+                    >
+                      {copied ? (
+                        <>
+                          <Unread
+                            weight="BoldDuotone"
+                            className="text-green-500"
+                            size={16}
+                          />
+                          <span className="text-green-500">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy weight="LineDuotone" size={16} />
+                          Copy
+                        </>
+                      )}
                     </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-40 bg-muted/95 backdrop-blur-xl z-150"
-                  >
-                    <DropdownMenuItem
-                      onClick={handleDownload}
-                      className="cursor-pointer"
-                    >
-                      <Download
-                        weight="LineDuotone"
-                        size={16}
-                        className="mr-2"
-                      />
-                      Download
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer">
-                      <History
-                        weight="LineDuotone"
-                        size={16}
-                        className="mr-2"
-                      />
-                      Publish
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {variants.length > 0 && (
-                <div className="flex items-center bg-muted/80 rounded-md border border-border/50 overflow-hidden h-10 shadow-sm">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-2 px-4 h-full hover:bg-muted transition-all text-sm font-semibold cursor-pointer">
-                        <span className="capitalize">{selectedLibrary}</span>
-                        <ChevronDown
-                          size={14}
-                          className="text-muted-foreground ml-1"
-                        />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="w-48 p-1.5 bg-muted/95 backdrop-blur-xl z-150"
-                    >
-                      {sortedVariants.map((v) => (
+                    <div className="w-px h-6 bg-border/50" />
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="px-2.5 h-full hover:bg-muted transition-all cursor-pointer flex items-center justify-center border-l border-border/50">
+                          <ChevronDown
+                            size={16}
+                            className="text-muted-foreground"
+                          />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-40 bg-muted/95 backdrop-blur-xl z-150"
+                      >
                         <DropdownMenuItem
-                          key={v.library}
-                          onSelect={() => handleLibraryChange(v.library)}
-                          className={cn(
-                            "cursor-pointer capitalize text-sm",
-                            selectedLibrary.toLowerCase() ===
-                              v.library.toLowerCase() &&
-                              "bg-primary/10 font-bold text-primary",
-                          )}
+                          onClick={handleDownload}
+                          className="cursor-pointer"
                         >
-                          {v.library}
+                          <Download
+                            weight="LineDuotone"
+                            size={16}
+                            className="mr-2"
+                          />
+                          Download
                         </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
+                        <DropdownMenuItem className="cursor-pointer">
+                          <History
+                            weight="LineDuotone"
+                            size={16}
+                            className="mr-2"
+                          />
+                          Publish
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  {variants.length > 0 && (
+                    <div className="flex items-center bg-muted/80 rounded-md border border-border/50 overflow-hidden h-10 shadow-sm">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center gap-2 px-4 h-full hover:bg-muted transition-all text-sm font-semibold cursor-pointer">
+                            <span className="capitalize">
+                              {selectedLibrary}
+                            </span>
+                            <ChevronDown
+                              size={14}
+                              className="text-muted-foreground ml-1"
+                            />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-48 p-1.5 bg-muted/95 backdrop-blur-xl z-150"
+                        >
+                          {sortedVariants.map((v) => (
+                            <DropdownMenuItem
+                              key={v.library}
+                              onSelect={() => handleLibraryChange(v.library)}
+                              className={cn(
+                                "cursor-pointer capitalize text-sm",
+                                selectedLibrary.toLowerCase() ===
+                                  v.library.toLowerCase() &&
+                                  "bg-primary/10 font-bold text-primary",
+                              )}
+                            >
+                              {v.library}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </>
+              )
+              */}
 
               <button
                 onClick={onClose}
@@ -462,49 +587,106 @@ export default function CodeExpansionPanel({
               isFullScreen ? "overflow-hidden flex flex-col" : "overflow-auto",
             )}
           >
-            {/* Code Tab */}
+            {/* Code Tab - Stacked View */}
             <div
               className={cn(
                 "h-full w-full",
                 activeTab === "code" ? "block" : "hidden",
               )}
             >
-              <SyntaxHighlighter
-                language={currentVariant.language}
-                style={duotoneEarth}
-                customStyle={{
-                  background: "transparent",
-                  margin: 0,
-                  padding: "1.5rem",
-                  fontSize: "14px",
-                  width: "100%",
-                  minHeight: "100%",
-                  overflow: "visible",
-                }}
-                showLineNumbers={true}
-                wrapLongLines={true}
-              >
-                {currentCode}
-              </SyntaxHighlighter>
+              <div className="w-full">
+                {sortedVariants.length > 0 ? (
+                  sortedVariants.map((v) => (
+                    <CodeCard
+                      key={v.library}
+                      variant={v}
+                      onCopy={(code) => navigator.clipboard.writeText(code)}
+                    />
+                  ))
+                ) : (
+                  <SyntaxHighlighter
+                    language={currentVariant.language}
+                    style={duotoneEarth}
+                    customStyle={{
+                      background: "transparent",
+                      margin: 0,
+                      padding: "1.5rem",
+                      fontSize: "14px",
+                      width: "100%",
+                      overflow: "visible",
+                    }}
+                    showLineNumbers={true}
+                    wrapLongLines={true}
+                  >
+                    {currentCode}
+                  </SyntaxHighlighter>
+                )}
+              </div>
             </div>
 
-            {/* Preview & Sandbox Tab */}
+            {/* Preview & Sandbox Tab - Unified Parallel Rendering */}
             <div
               className={cn(
-                "h-full w-full",
+                "h-full w-full relative",
                 activeTab === "preview" || activeTab === "sandbox"
                   ? "block"
                   : "hidden",
               )}
             >
-              <SandboxEnvironment
-                key={`${messageId}-${selectedLibrary}-${resolvedTheme}`} // Force re-mount on message, library OR theme change
-                code={currentCode}
-                library={selectedLibrary}
-                language={currentVariant.language}
-                onCodeChange={setCurrentCode}
-                mode={activeTab === "sandbox" ? "full" : "preview"}
-              />
+              <div
+                className={cn(
+                  activeTab === "preview" ? "block" : "hidden",
+                  "w-full h-full overflow-auto",
+                )}
+              >
+                {sortedVariants.map((v) => {
+                  const isWarmed = warmedLibraries.has(v.library.toLowerCase());
+                  if (!isWarmed) return null;
+
+                  return (
+                    <PreviewCard
+                      key={`${messageId}-${v.library}-preview`}
+                      variant={v}
+                      resolvedTheme={resolvedTheme || "light"}
+                      messageId={messageId}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Individual Sandbox Instances (Commented for future use)
+              sortedVariants.map((v) => {
+                const isWarmed = warmedLibraries.has(v.library.toLowerCase());
+                if (!isWarmed) return null;
+
+                const isActiveInSandbox =
+                  activeTab === "sandbox" &&
+                  selectedLibrary.toLowerCase() === v.library.toLowerCase();
+
+                return (
+                  <div
+                    key={`${messageId}-${v.library}-sandbox-shared`}
+                    className={cn(
+                      "absolute inset-0 bg-background",
+                      isActiveInSandbox
+                        ? "z-50 opacity-100"
+                        : "z-0 opacity-0 pointer-events-none",
+                    )}
+                  >
+                    <SandboxEnvironment
+                      code={v.code}
+                      library={v.library}
+                      language={v.language}
+                      onCodeChange={(newCode) => {
+                        v.code = newCode;
+                        if (isActiveInSandbox) setCurrentCode(newCode);
+                      }}
+                      mode="full"
+                    />
+                  </div>
+                );
+              })
+              */}
             </div>
           </div>
         </motion.div>

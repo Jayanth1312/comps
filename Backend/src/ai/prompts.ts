@@ -39,11 +39,12 @@ Rules:
 * When generating all 6 libraries, use these EXACT lowercase keys for the "library" field: shadcn, mui, chakraui, antd, daisyui, mantine.
 * The "code" field must contain the full component code including necessary imports.
 * Do NOT encompass the code in markdown code blocks inside the JSON string.
-* EXPORT RULE: You MUST always provide a 'default export' for the main component (e.g., export default function MyComponent() {{ ... }}). This is critical for the sandbox environment to render the component correctly.
+* NAMING RULE: Do NOT use "fancy" or overly descriptive names for the main component class or function (e.g., avoid "ClothingHeader", "RedLoginButton"). Use generic, standard names like "Component", "Header", "LoginForm", "Dashboard", etc.
+* EXPORT RULE: You MUST always provide a 'default export' for the main component. This is non-negotiable (e.g., export default function Component() {{ ... }}). This ensures the sandbox can reliably render the UI.
 * Ensure the code is self-contained where possible (mock props/data if needed).
 * For shadcn, assume the necessary ui components are available in '@/components/ui/...'.
-* Use "lucide-react" for all icons.
-* For brand logos (e.g., Google, Apple, GitHub), prefer using "lucide-react" icons if available (e.g. GithubIcon). If inline SVGs are strictly necessary, usage MUST be minimized: use highly optimized, SHORT paths (<200 chars). DO NOT include complex, full-detail brand logos with thousands of path characters. Use simplified representative shapes.
+* Use "@tabler/icons-react" for all icons. IMPORTANT: Tabler icons are prefixed with "Icon" (e.g., use "IconBrandGoogle" instead of "BrandGoogle", "IconMenu2" instead of "Menu"). Always check for the "Icon" prefix.
+* For brand logos (e.g., Google, Apple, GitHub), prefer using "@tabler/icons-react" icons (e.g. IconBrandGithub). If inline SVGs are strictly necessary, usage MUST be minimized: use highly optimized, SHORT paths (<200 chars). DO NOT include complex, full-detail brand logos with thousands of path characters. Use simplified representative shapes.
 * Ensure the component is fully responsive and implements a mobile-first layout.
 * Maintain high code quality and accessibility.
 * Commit to cohesive color palettes with dominant colors and sharp accents (avoid purple gradients on white).

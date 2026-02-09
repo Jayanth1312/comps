@@ -321,6 +321,7 @@ export function cn(...inputs: ClassValue[]) {
   const options = React.useMemo(
     () => ({
       externalResources: ["https://cdn.tailwindcss.com"],
+      bundlerTimeout: 100000,
       classes: {
         "sp-wrapper": "custom-wrapper",
         "sp-layout": "custom-layout",
@@ -332,61 +333,73 @@ export function cn(...inputs: ClassValue[]) {
     [],
   );
 
-  const customSetup = React.useMemo(
-    () => ({
-      dependencies: {
-        "lucide-react": "latest",
-        "@solar-icons/react": "latest",
-        "framer-motion": "latest",
+  const customSetup = React.useMemo(() => {
+    const lib = library.toLowerCase();
+
+    // Shared base dependencies for ALL sandboxes
+    const baseDeps = {
+      "@tabler/icons-react": "latest",
+      clsx: "latest",
+      "tailwind-merge": "latest",
+    };
+
+    let specificDeps = {};
+
+    if (lib === "mui" || lib.includes("material")) {
+      specificDeps = {
+        "@mui/material": "^5.15.11",
+        "@mui/icons-material": "^5.15.11",
+        "@emotion/react": "^11.11.3",
+        "@emotion/styled": "^11.11.0",
+      };
+    } else if (lib === "chakra" || lib === "chakraui") {
+      specificDeps = {
+        "@chakra-ui/react": "^2.8.2",
+        "@emotion/react": "^11.11.3",
+        "@emotion/styled": "^11.11.0",
+        "framer-motion": "^10.18.0",
+      };
+    } else if (lib === "antd") {
+      specificDeps = {
+        antd: "^5.15.0",
+        dayjs: "^1.11.10",
+        "@ant-design/icons": "^5.3.0",
+      };
+    } else if (lib === "mantine") {
+      specificDeps = {
+        "@mantine/core": "^7.1.0",
+        "@mantine/hooks": "^7.1.0",
+        "@mantine/dates": "^7.1.0",
+        "date-fns": "^3.3.0",
         clsx: "latest",
-        "tailwind-merge": "latest",
-        "@mui/material": "latest",
-        "@mui/icons-material": "latest",
-        "@emotion/react": "latest",
-        "@emotion/styled": "latest",
-        "@chakra-ui/react": "^2.10.3",
-        antd: "^5.23.0",
-        dayjs: "latest",
-        "@rc-component/picker": "latest",
-        "@rc-component/util": "latest",
-        "@rc-component/context": "latest",
-        "@rc-component/trigger": "latest",
-        "@rc-component/mini-decimal": "latest",
-        "@rc-component/portal": "latest",
-        "@rc-component/mutate-observer": "latest",
-        "@rc-component/tour": "latest",
-        "rc-util": "latest",
-        "rc-pagination": "latest",
-        "rc-picker": "latest",
-        "rc-notification": "latest",
-        "rc-tooltip": "latest",
-        "rc-table": "latest",
-        "@ant-design/icons": "latest",
-        "@ant-design/colors": "latest",
-        "@ant-design/cssinjs": "latest",
-        "@mantine/core": "latest",
-        "@mantine/hooks": "latest",
-        "@mantine/dates": "latest",
-        "date-fns": "latest",
-        "react-daisyui": "latest",
-        "@radix-ui/react-slot": "latest",
-        "@radix-ui/react-dropdown-menu": "latest",
-        "@radix-ui/react-dialog": "latest",
-        "@radix-ui/react-tabs": "latest",
-        "@radix-ui/react-popover": "latest",
-        "@radix-ui/react-tooltip": "latest",
-        "@radix-ui/react-select": "latest",
-        "@radix-ui/react-checkbox": "latest",
-        "@radix-ui/react-label": "latest",
-        "@radix-ui/react-avatar": "latest",
-        "@radix-ui/react-separator": "latest",
-        "@radix-ui/react-scroll-area": "latest",
-        "@radix-ui/react-accordion": "latest",
-        "@radix-ui/react-collapsible": "latest",
+      };
+    } else if (lib === "daisyui" || lib === "shadcn") {
+      specificDeps = {
+        "react-daisyui": "^5.0.0",
+        "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-dropdown-menu": "^2.0.6",
+        "@radix-ui/react-dialog": "^1.0.5",
+        "@radix-ui/react-tabs": "^1.0.4",
+        "@radix-ui/react-popover": "^1.0.7",
+        "@radix-ui/react-tooltip": "^1.0.7",
+        "@radix-ui/react-select": "^2.0.0",
+        "@radix-ui/react-checkbox": "^1.0.4",
+        "@radix-ui/react-label": "^2.0.2",
+        "@radix-ui/react-avatar": "^1.0.4",
+        "@radix-ui/react-separator": "^1.0.3",
+        "@radix-ui/react-scroll-area": "^1.0.5",
+        "@radix-ui/react-accordion": "^1.1.2",
+        "@radix-ui/react-collapsible": "^1.0.3",
+      };
+    }
+
+    return {
+      dependencies: {
+        ...baseDeps,
+        ...specificDeps,
       },
-    }),
-    [],
-  );
+    };
+  }, [library]);
 
   if (!mounted) return null;
 

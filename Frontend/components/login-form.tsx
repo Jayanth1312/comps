@@ -24,7 +24,7 @@ export function LoginForm({
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/builder";
+  const redirectTo = searchParams.get("redirect") || "/home";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +65,7 @@ export function LoginForm({
 
       if (response.ok) {
         login(data.user.email, data.sessionId, data.user);
-        router.push(redirectTo);
+        router.replace(redirectTo);
       } else {
         setError(data.error || "Invalid credentials");
       }

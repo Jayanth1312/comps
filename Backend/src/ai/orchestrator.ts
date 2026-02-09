@@ -33,9 +33,10 @@ export class GeminiOrchestrator {
 
   constructor() {
     this.model = new ChatGoogleGenerativeAI({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       maxOutputTokens: 16384,
       apiKey: process.env.GEMINI_API_KEY,
+      maxRetries: 0,
       // @ts-ignore
       modelKwargs: {
         responseMimeType: "application/json",
@@ -83,13 +84,17 @@ export class GeminiOrchestrator {
     let isNewSession = !session;
 
     if (isNewSession && userId) {
-      // Find a title based on the prompt (simplified title generation)
-      const titlePrompt = `Generate a very short (2-4 words) descriptive title for this UI component request: "${prompt}". Respond ONLY with the title.`;
-      const titleResult = await this.model.invoke(titlePrompt);
-      const title =
-        typeof titleResult === "string"
-          ? titleResult
-          : (titleResult as any).content || "New Component";
+      let title = "New Component";
+      try {
+        const titlePrompt = `Generate a very short (2-4 words) descriptive title for this UI component request: "${prompt}". Respond ONLY with the title.`;
+        const titleResult = await this.model.invoke(titlePrompt);
+        title =
+          typeof titleResult === "string"
+            ? titleResult
+            : (titleResult as any).content || "New Component";
+      } catch (e) {
+        console.error("Failed to generate title, using default:", e);
+      }
 
       session = new ChatSession({
         userId,
