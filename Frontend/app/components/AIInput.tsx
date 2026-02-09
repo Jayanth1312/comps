@@ -136,7 +136,7 @@ export default function AIInput({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 relative">
+    <div className="w-full max-w-3xl mx-auto relative">
       {/* Optimized Pill-Style Previews (Image 1 reference) */}
       <div className="flex flex-wrap gap-2 mb-2 min-h-[32px]">
         <AnimatePresence>

@@ -1,0 +1,71 @@
+[HMR] connected node_modules_next_dist_f3530cac._.js:2298:28
+[HMR] connected node_modules_next_dist_f3530cac._.js:2298:28
+Uncaught TypeError: name.startsWith is not a function
+    withLegacyCompat preview-runner.tsx:24
+    get preview-runner.tsx:117
+    <anonymous> preview-runner.tsx:200
+    instantiateModule dev-base.ts:244
+    runModuleExecutionHooks dev-base.ts:278
+    instantiateModule dev-base.ts:238
+    getOrInstantiateModuleFromParent dev-base.ts:162
+    esmImport runtime-utils.ts:347
+    <anonymous> page.tsx:4
+    instantiateModule dev-base.ts:244
+    runModuleExecutionHooks dev-base.ts:278
+    instantiateModule dev-base.ts:238
+    getOrInstantiateModuleFromParent dev-base.ts:162
+    commonJsRequire runtime-utils.ts:389
+    requireModule react-server-dom-turbopack-client.browser.development.js:97
+    initializeModuleChunk react-server-dom-turbopack-client.browser.development.js:1861
+    resolveModuleChunk react-server-dom-turbopack-client.browser.development.js:1748
+    resolveModule react-server-dom-turbopack-client.browser.development.js:2904
+src_e62dd1e8._.js:2830:18
+[Fast Refresh] rebuilding node_modules_next_dist_f3530cac._.js:2298:28
+[Fast Refresh] done in 813ms node_modules_next_dist_f3530cac._.js:2298:28
+[HMR] connected node_modules_next_dist_f3530cac._.js:2298:28
+Uncaught TypeError: name.startsWith is not a function
+    withLegacyCompat preview-runner.tsx:24
+    get preview-runner.tsx:117
+    <anonymous> preview-runner.tsx:200
+    instantiateModule dev-base.ts:244
+    runModuleExecutionHooks dev-base.ts:278
+    instantiateModule dev-base.ts:238
+    getOrInstantiateModuleFromParent dev-base.ts:162
+    esmImport runtime-utils.ts:347
+    <anonymous> page.tsx:4
+    instantiateModule dev-base.ts:244
+    runModuleExecutionHooks dev-base.ts:278
+    instantiateModule dev-base.ts:238
+    getOrInstantiateModuleFromParent dev-base.ts:162
+    commonJsRequire runtime-utils.ts:389
+    requireModule react-server-dom-turbopack-client.browser.development.js:97
+    initializeModuleChunk react-server-dom-turbopack-client.browser.development.js:1861
+    resolveModuleChunk react-server-dom-turbopack-client.browser.development.js:1748
+    resolveModule react-server-dom-turbopack-client.browser.development.js:2904
+src_e62dd1e8._.js:2830:18
+[Fast Refresh] rebuilding 2 node_modules_next_dist_f3530cac._.js:2298:28
+[Fast Refresh] done in 446ms 2 node_modules_next_dist_f3530cac._.js:2298:28
+[HMR] connected node_modules_next_dist_f3530cac._.js:2298:28
+Uncaught TypeError: name.startsWith is not a function
+    withLegacyCompat preview-runner.tsx:24
+    get preview-runner.tsx:117
+    <anonymous> preview-runner.tsx:200
+    instantiateModule dev-base.ts:244
+    runModuleExecutionHooks dev-base.ts:278
+    instantiateModule dev-base.ts:238
+    getOrInstantiateModuleFromParent dev-base.ts:162
+    esmImport runtime-utils.ts:347
+    <anonymous> page.tsx:4
+    instantiateModule dev-base.ts:244
+    runModuleExecutionHooks dev-base.ts:278
+    instantiateModule dev-base.ts:238
+    getOrInstantiateModuleFromParent dev-base.ts:162
+    commonJsRequire runtime-utils.ts:389
+    requireModule react-server-dom-turbopack-client.browser.development.js:97
+    initializeModuleChunk react-server-dom-turbopack-client.browser.development.js:1861
+    resolveModuleChunk react-server-dom-turbopack-client.browser.development.js:1748
+    resolveModule react-server-dom-turbopack-client.browser.development.js:2904
+src_e62dd1e8._.js:2830:18
+[Fast Refresh] rebuilding 3 node_modules_next_dist_f3530cac._.js:2298:28
+[Fast Refresh] done in 331ms node_modules_next_dist_f3530cac._.js:2298:28
+[Fast Refresh] done in 332ms 2 node_modules_next_dist_f3530cac._.js:2298:28

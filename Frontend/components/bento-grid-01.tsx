@@ -100,10 +100,14 @@ function FeaturesSection() {
       <div className="max-w-7xl w-full mx-auto">
         <Link
           href="/home"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-muted/20 backdrop-blur-md text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all mb-6 group"
         >
-          <ArrowLeft size={20} weight="BoldDuotone" />
-          <span>Back to home</span>
+          <ArrowLeft
+            size={16}
+            weight="BoldDuotone"
+            className="group-hover:-translate-x-0.5 transition-transform"
+          />
+          <span className="text-sm font-medium">Back to home</span>
         </Link>
         <motion.h1
           initial={{ opacity: 0, y: 20 }}

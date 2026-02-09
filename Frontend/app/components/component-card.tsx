@@ -65,11 +65,12 @@ export default function ComponentCard({
   const voteButtons = (
     <div className="vote-group overflow-hidden rounded-lg shrink-0 flex items-center border border-border bg-background/50">
       <div
-        className={`action-button vote-button border-none rounded-none cursor-default px-2.5 py-1.5 ${
+        className={cn(
+          "flex items-center justify-center px-2.5 py-1.5 min-h-[2.25rem] transition-colors cursor-default",
           hasLiked
-            ? "text-primary bg-primary/10"
-            : "text-muted-foreground opacity-70"
-        }`}
+            ? "text-primary"
+            : "text-muted-foreground opacity-70",
+        )}
         title="Total likes"
       >
         <div className="flex items-center gap-1">
@@ -81,11 +82,12 @@ export default function ComponentCard({
       <div className="w-px h-6 bg-border shrink-0" />
 
       <div
-        className={`action-button vote-button border-none rounded-none cursor-default px-2.5 py-1.5 ${
+        className={cn(
+          "flex items-center justify-center px-2.5 py-1.5 min-h-[2.25rem] transition-colors cursor-default",
           hasDisliked
             ? "text-foreground bg-foreground/10"
-            : "text-muted-foreground opacity-70"
-        }`}
+            : "text-muted-foreground opacity-70",
+        )}
         title="Total dislikes"
       >
         <div className="flex items-center gap-1">

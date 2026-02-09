@@ -81,51 +81,9 @@ export default function BuilderPage() {
   const [generationError, setGenerationError] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Resize state
-  const [isResizing, setIsResizing] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(45); // Percentage
+  const panelWidth = 65;
 
-  const startResizing = useCallback(() => setIsResizing(true), []);
-  const stopResizing = useCallback(() => setIsResizing(false), []);
 
-  const resize = useCallback(
-    (e: MouseEvent) => {
-      if (isResizing) {
-        const newWidthPixels = window.innerWidth - e.clientX;
-
-        // Constraints in pixels
-        const rightMinWidth = 520;
-        const leftMinWidth = 480;
-
-        const maxRightPixels = window.innerWidth - leftMinWidth;
-
-        if (
-          newWidthPixels >= rightMinWidth &&
-          newWidthPixels <= maxRightPixels
-        ) {
-          const newWidthPercent = (newWidthPixels / window.innerWidth) * 100;
-          setPanelWidth(newWidthPercent);
-        }
-      }
-    },
-    [isResizing],
-  );
-
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", resize);
-      window.addEventListener("mouseup", stopResizing);
-    } else {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    }
-    return () => {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    };
-  }, [isResizing, resize, stopResizing]);
-
-  // Load messages from localStorage on mount
   useEffect(() => {
     const savedMessages = localStorage.getItem("builder_messages");
     if (savedMessages) {
@@ -380,6 +338,12 @@ export default function BuilderPage() {
     setSelectedVariant(undefined);
   };
 
+  const handleDeleteSession = (deletedId: string) => {
+    if (deletedId === chatSessionId) {
+      handleNewChat();
+    }
+  };
+
   // Preview component for demonstration
   const PreviewButton = () => (
     <button className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-lg active:scale-95 transition-all">
@@ -405,11 +369,11 @@ export default function BuilderPage() {
       <div
         className={cn(
           "flex flex-col relative",
-          !isResizing && "transition-all duration-300 ease-in-out",
+          "transition-all duration-300 ease-in-out",
         )}
         style={{
           width: expandedCode ? `${100 - panelWidth}%` : "100%",
-          minWidth: expandedCode ? "480px" : "auto",
+          minWidth: expandedCode ? "320px" : "auto",
         }}
       >
         {/* Header Elements (Fixed) */}
@@ -591,32 +555,10 @@ export default function BuilderPage() {
         selectedVariant={selectedVariant}
         PreviewComponent={PreviewButton}
         width={`${panelWidth}%`}
-        isResizing={isResizing}
         activeTab={activeTab}
         onActiveTabChange={setActiveTab}
         messageId={expandedCode || undefined}
       />
-
-      {/* Resize Handle */}
-      {expandedCode && activeTab !== "sandbox" && (
-        <div
-          onMouseDown={startResizing}
-          className={cn(
-            "fixed top-0 bottom-0 z-110 w-2 cursor-col-resize flex items-center justify-center",
-            isResizing && "bg-primary/30",
-          )}
-          style={{
-            right: `${panelWidth}%`,
-            transform: "translateX(50%)",
-          }}
-        >
-          {/* Visual Handle */}
-          <div className="w-2 h-10 rounded-full bg-border relative">
-            <div className="absolute inset-0 -inset-x-2" />{" "}
-            {/* Larger hit area */}
-          </div>
-        </div>
-      )}
 
       {/* Auth Required Dialog */}
       <AuthRequiredDialog
@@ -628,6 +570,7 @@ export default function BuilderPage() {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         onSelectSession={loadChatSession}
+        onDeleteSession={handleDeleteSession}
         currentSessionId={chatSessionId}
       />
     </div>

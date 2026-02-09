@@ -63,32 +63,67 @@ const createSafeProxy = (
 ) => {
   return new Proxy(target, {
     get: (target, prop) => {
-      // Direct property access
-      let val = (target as any)[prop];
+      // Basic checks
+      if (prop === "Symbol(Symbol.iterator)") return undefined;
+      if (prop === "__esModule") return target.__esModule ?? true;
+      if (prop === "then") return undefined;
 
-      // If missing, return a dummy component
+      let val = target[prop];
+
       if (val === undefined) {
-        if (prop === "then") return undefined; // Promise check
-        console.warn(
-          `[Sandbox] Missing global export: ${name}.${String(prop)}`,
-        );
-        const Missing = () => null;
-        (Missing as any).displayName = `Missing(${name}.${String(prop)})`;
+        if (typeof prop === "symbol") return undefined;
+        // Don't warn for common internal React/DevTools props
+        if (
+          typeof prop === "string" &&
+          (prop.startsWith("__") || prop === "displayName")
+        ) {
+          return undefined;
+        }
+
+        // console.warn(`[Sandbox] Missing export: ${name}.${String(prop)}`);
+        const Missing = (props: any) => {
+          // console.error(
+          //   `[Sandbox] Rendering missing component: ${name}.${String(prop)}`,
+          // );
+          return null;
+        };
+        Missing.displayName = `Missing(${name}.${String(prop)})`;
         return Missing;
       }
 
       // Apply compatibility layer if needed
-      if (compatType) {
+      if (compatType && val) {
         val = withLegacyCompat(val, compatType);
       }
 
       return val;
     },
+    ownKeys(target) {
+      return Reflect.ownKeys(target);
+    },
+    getOwnPropertyDescriptor(target, prop) {
+      return Reflect.getOwnPropertyDescriptor(target, prop);
+    },
   });
 };
 
 const MantineCompat = createSafeProxy(Mantine, "Mantine", "mantine");
-const ChakraCompat = createSafeProxy(ChakraUI, "ChakraUI", "chakra");
+const ChakraCompat = createSafeProxy(
+  {
+    ...ChakraUI,
+    useDisclosure: () => {
+      const [isOpen, setIsOpen] = React.useState(false);
+      return {
+        isOpen,
+        onOpen: () => setIsOpen(true),
+        onClose: () => setIsOpen(false),
+        onToggle: () => setIsOpen((prev) => !prev),
+      };
+    },
+  },
+  "ChakraUI",
+  "chakra",
+);
 const MaterialSafe = createSafeProxy(MaterialUI, "MaterialUI");
 const AntdSafe = createSafeProxy(Antd, "Antd");
 const LucideSafe = createSafeProxy(Lucide, "Lucide");
@@ -138,6 +173,18 @@ const libs: Record<string, any> = {
   clsx: require("clsx"),
   "tailwind-merge": require("tailwind-merge"),
   "class-variance-authority": require("class-variance-authority"),
+  // Mock emotion for Chakra/MUI if they try to require it
+  "@emotion/react": {
+    css: () => null,
+    jsx: React.createElement,
+    Global: () => null,
+    ThemeContext: React.createContext({}),
+  },
+  "@emotion/styled": {
+    default: (tag: any) => (props: any) => React.createElement(tag, props),
+  },
+  daisyui: {},
+  lucide: LucideSafe,
 };
 
 // Common utility components to expose as globals (prevent ReferenceErrors)
@@ -159,6 +206,11 @@ const scope: Record<string, any> = {
   lucide: LucideSafe, // Lowercase
   ...Shadcn,
   ...utils,
+  // Add Lucide to scope explicitly for common names
+  ...LucideSafe,
+  // DaisyUI is classes-only, but mock the global in case AI tries to use it as a lib
+  daisy: {},
+  daisyui: {},
   // Force presence of highly common components
   Box: (ChakraUI as any)?.Box || (MaterialUI as any)?.Box,
   Flex: (ChakraUI as any)?.Flex,
@@ -173,56 +225,126 @@ export default function PreviewRunner() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Inject Tailwind CDN with DaisyUI support
+    if (!document.querySelector('script[src="https://cdn.tailwindcss.com"]')) {
+      const script = document.createElement("script");
+      script.src = "https://cdn.tailwindcss.com";
+      script.onload = () => {
+        (window as any).tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                border: "var(--border)",
+                input: "var(--input)",
+                ring: "var(--ring)",
+                background: "var(--background)",
+                foreground: "var(--foreground)",
+                primary: {
+                  DEFAULT: "var(--primary)",
+                  foreground: "var(--primary-foreground)",
+                },
+                secondary: {
+                  DEFAULT: "var(--secondary)",
+                  foreground: "var(--secondary-foreground)",
+                },
+                destructive: {
+                  DEFAULT: "var(--destructive)",
+                  foreground: "var(--destructive-foreground)",
+                },
+                muted: {
+                  DEFAULT: "var(--muted)",
+                  foreground: "var(--muted-foreground)",
+                },
+                accent: {
+                  DEFAULT: "var(--accent)",
+                  foreground: "var(--accent-foreground)",
+                },
+                popover: {
+                  DEFAULT: "var(--popover)",
+                  foreground: "var(--popover-foreground)",
+                },
+                card: {
+                  DEFAULT: "var(--card)",
+                  foreground: "var(--card-foreground)",
+                },
+              },
+            },
+          },
+          plugins: [], // Plugins are harder via CDN without loading them first
+        };
+      };
+      document.head.appendChild(script);
+
+      // Add DaisyUI CSS via CDN link as well for full support
+      const daisyLink = document.createElement("link");
+      daisyLink.rel = "stylesheet";
+      daisyLink.href =
+        "https://cdn.jsdelivr.net/npm/daisyui@5.0.0-beta.8/daisyui.css";
+      document.head.appendChild(daisyLink);
+    }
+
     const handleMessage = (event: MessageEvent) => {
+      // console.log("Sandbox received message:", event.data);
       const { code } = event.data;
       if (!code) return;
 
       try {
         // Transpile code using Babel
+        // console.log("[Sandbox] Starting Babel transform...");
         const transformResult = transform(code, {
           presets: ["react", ["env", { modules: "commonjs" }]],
           filename: "component.tsx",
         }).code;
 
         if (!transformResult) throw new Error("Transpilation failed");
-
-        // DEBUG: See what the code actually looks like
-        console.log("Transpiled Code:", transformResult);
+        // console.log("[Sandbox] Babel transform complete.");
 
         // Mock module system
         const module = { exports: {} };
         const exports = module.exports;
 
         // Robust require mock
-        const customRequire = (id: string) => {
-          // console.log("Sandbox require:", id); // Reduce noise, only log unresolved or key libs
+        const coreLibs: Record<string, any> = {
+          react: { default: React, ...React, __esModule: true },
+          "@mui/material": MaterialSafe,
+          "@chakra-ui/react": ChakraCompat,
+          antd: AntdSafe,
+          "@mantine/core": MantineCompat,
+          "lucide-react": LucideSafe,
+          "@emotion/react": libs["@emotion/react"],
+          "@emotion/styled": libs["@emotion/styled"],
+          daisyui: { default: {}, __esModule: true },
+        };
 
-          if (id === "react") {
-            return { default: React, ...React, __esModule: true };
+        const customRequire = (id: string) => {
+          // console.log("[Sandbox] customRequire:", id);
+
+          if (coreLibs[id]) {
+            const res = coreLibs[id];
+            if (res && res.default) return res;
+            return { default: res, ...res, __esModule: true };
           }
 
           let res = libs[id];
-
           if (!res) {
             if (id.startsWith("@/components/ui")) res = Shadcn;
             else if (id.startsWith("@/lib/utils")) res = require("@/lib/utils");
             else if (id.startsWith("@mui/material")) res = MaterialSafe;
             else if (id.startsWith("@chakra-ui/react")) res = ChakraCompat;
             else if (id.startsWith("@mantine/core")) res = MantineCompat;
-            else if (id === "lucide-react") res = LucideSafe;
           }
 
-          // Deep import or case-insensitive resolution
           const parts = id.split("/");
           const lastPart = parts[parts.length - 1];
           const capitalized =
             lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
 
-          // Try to find the component in the library
+          // Try to resolve a specific component from a library
           let comp = res ? res[lastPart] || res[capitalized] : null;
 
-          // CRITICAL FALLBACK: If component not found in targeted lib, search EVERYWHERE
-          if (!comp) {
+          // If still not found, search through all known major UI libs
+          if (!comp && res) {
             const allPossibleLibs = [
               Shadcn,
               MaterialSafe,
@@ -230,129 +352,69 @@ export default function PreviewRunner() {
               MantineCompat,
               AntdSafe,
               LucideSafe,
-              utils,
             ];
             for (const lib of allPossibleLibs) {
-              const l = lib as any;
-              if (l && (l[lastPart] || l[capitalized])) {
-                comp = l[lastPart] || l[capitalized];
+              if (lib[lastPart] || lib[capitalized]) {
+                comp = lib[lastPart] || lib[capitalized];
                 break;
               }
             }
           }
 
           if (comp) {
+            // console.log(`[Sandbox] Resolved '${id}' to component: ${lastPart}`);
             return {
-              ...(res || {}), // Include all other exports (like CardHeader if we found Card from Shadcn)
               default: comp,
               [lastPart]: comp,
               [capitalized]: comp,
+              // Spread siblings if 'res' is the library it came from
+              ...(res || {}),
               __esModule: true,
             };
           }
 
-          // FIX: If we found the library (e.g. Shadcn) but didn't find the specific component 'Card' via string manipulation above
-          // AND the ID looks like a file path (ends with lowercase), we might need to return the whole library subset
-          // OR if we returned 'Shadcn' as 'res' earlier, we need to make sure 'default' works if the user did 'import Card from ...'
-
-          // But wait, if 'res' is Shadcn, and we are looking for '.../card',
-          // and 'comp' (Shadcn.Card) was found?
-          // The block above returns { default: comp, ... }.
-          // So 'require(.../card).default' is 'Card'. This is CORRECT for 'import Card from .../card'.
-          // 'require(.../card).Card' is 'Card'. This is CORRECT for 'import { Card } from .../card'.
-
-          // SO WHY DID IT FAIL?
-          // Maybe `lastPart` is "card", `capitalized` is "Card".
-          // Shadcn["Card"] exists.
-          // So 'comp' IS found.
-
-          // Let's add explicit logging to debug this fallback logic.
-          if (res && !comp) {
-            // Maybe it is a deeper path? or different casing?
-            // try to find ANY export that looks like the file name
-            const keys = Object.keys(res);
-            const match = keys.find(
-              (k) => k.toLowerCase() === lastPart.toLowerCase(),
-            );
-            if (match) {
-              console.log(`[Sandbox] Fallback match: ${id} -> ${match}`);
-              comp = res[match];
-              return {
-                ...(res || {}), // Include siblings
-                default: comp,
-                [match]: comp,
-                __esModule: true,
-              };
-            } else {
-              console.log(
-                `[Sandbox] No case-insensitive match for '${lastPart}' in`,
-                keys,
-              );
-            }
-          }
-
-          // If still not found and it's a library namespace, return the namespace
+          // If we have a library 'res' but couldn't find the specific 'comp', return the whole lib wrapped in safe proxy
           if (res) {
-            const base = { default: res, ...res, __esModule: true };
-            return createSafeProxy(base, id);
+            // console.log(`[Sandbox] Resolved '${id}' to library namespace.`);
+            return createSafeProxy(
+              { default: res, ...res, __esModule: true },
+              id,
+            );
           }
 
-          // Proxy to handle missing exports gracefully
-          const safeRes = new Proxy(
-            { default: () => null, __esModule: true },
-            {
-              get: (target, prop) => {
-                // If it's a known property, return it
-                if (prop in target) return (target as any)[prop];
-                if (prop === "then") return undefined; // distinct for promises
-
-                // Otherwise, return a dummy component that warns but doesn't crash
-                console.warn(
-                  `[Sandbox] Warning: Component/Export '${String(
-                    prop,
-                  )}' was imported but not found in module '${id}'. Returning fallback.`,
-                );
-                return () => (
-                  <div
-                    style={{
-                      border: "1px dashed red",
-                      padding: "4px",
-                      color: "red",
-                      fontSize: "10px",
-                    }}
-                  >
-                    Missing: {String(prop)}
-                  </div>
-                );
-              },
-            },
-          );
-
-          console.warn(`Module/Component not resolved: ${id}`);
-          return safeRes;
+          // console.warn(`[Sandbox] Module ID '${id}' reached fallback.`);
+          return createSafeProxy({ default: () => null, __esModule: true }, id);
         };
 
-        const scopeKeys = Object.keys(scope);
-        const scopeValues = Object.values(scope);
+        const argNames = [
+          ...Object.keys(scope),
+          "module",
+          "exports",
+          "require",
+        ];
+        const argValues = [
+          ...Object.values(scope),
+          module,
+          exports,
+          customRequire,
+        ];
 
-        // Debug scope
-        console.log("Allowed Scope Keys:", scopeKeys);
-
-        // Add module system vars to scope
-        const argNames = [...scopeKeys, "module", "exports", "require"];
-        const argValues = [...scopeValues, module, exports, customRequire];
-
+        // console.log("[Sandbox] Executing render function...");
         const renderFunc = new Function(...argNames, transformResult);
-
-        // Execute the function
         renderFunc(...argValues);
 
-        // 4. Retrieve content
-        // Babel 'env' transforms `export default` to `exports.default = ...`
-        // or sometimes `module.exports = ...` depending on config.
-        // We check both.
-        const ExportedComponent =
+        let ExportedComponent =
           (module.exports as any).default || module.exports;
+
+        // CRITICAL FIX: If AI exported an ELEMENT like 'export default <div />'
+        // instead of a COMPONENT, wrap it. This fixes "got: object" errors.
+        if (React.isValidElement(ExportedComponent)) {
+          // console.log(
+          //   "[Sandbox] Exported value is a JSX element. Wrapping in component.",
+          // );
+          const Element = ExportedComponent as React.ReactElement;
+          ExportedComponent = () => Element;
+        }
 
         if (
           !ExportedComponent ||
@@ -360,16 +422,33 @@ export default function PreviewRunner() {
             typeof ExportedComponent !== "object")
         ) {
           throw new Error(
-            "Code did not return a valid React component. Ensure you have 'export default function Component...'",
+            "No valid component exported. Use 'export default function Component()'.",
           );
         }
 
+        // Final safety check for objects
+        if (
+          typeof ExportedComponent === "object" &&
+          !ExportedComponent.$$typeof &&
+          !(ExportedComponent as any).render
+        ) {
+          // console.warn(
+          //   "[Sandbox] Exported object is not a valid React component. Attempting to use its first export.",
+          // );
+          const firstKey = Object.keys(ExportedComponent).find(
+            (k) => typeof (ExportedComponent as any)[k] === "function",
+          );
+          if (firstKey)
+            ExportedComponent = (ExportedComponent as any)[firstKey];
+        }
+
+        // console.log("[Sandbox] Success. Setting component state.");
         setComponent(() => ExportedComponent);
         setError(null);
         window.parent.postMessage({ type: "preview-loaded" }, "*");
       } catch (err: any) {
-        console.error("Preview Error:", err);
-        setError(err.message);
+        // console.error("[Sandbox] Error in handleMessage:", err);
+        setError(err.message || "Execution Error");
         window.parent.postMessage(
           { type: "preview-error", error: err.message },
           "*",
@@ -404,7 +483,7 @@ export default function PreviewRunner() {
     <div className="w-full h-full">
       <ErrorBoundary
         onError={(err) => {
-          console.error("Runtime Render Error:", err);
+          // console.error("Runtime Render Error:", err);
           window.parent.postMessage(
             { type: "preview-error", error: err.message },
             "*",

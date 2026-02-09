@@ -177,7 +177,7 @@ export function SignupForm({
         <Field>
           <Button
             type="submit"
-            className="w-full h-11 text-base font-semibold bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-opacity"
+            className="w-full h-11 text-base font-semibold bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-opacity cursor-pointer"
             disabled={isLoading}
           >
             {isLoading ? "Creating Account..." : "Create Account"}

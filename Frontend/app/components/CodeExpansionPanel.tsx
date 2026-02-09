@@ -49,7 +49,6 @@ interface CodeExpansionPanelProps {
   selectedVariant?: CodeVariant;
   PreviewComponent?: React.ComponentType;
   width?: string;
-  isResizing?: boolean;
   activeTab: "code" | "preview" | "sandbox";
   onActiveTabChange: (tab: "code" | "preview" | "sandbox") => void;
   messageId?: string;
@@ -156,7 +155,6 @@ export default function CodeExpansionPanel({
   selectedVariant,
   PreviewComponent,
   width = "50%",
-  isResizing = false,
   activeTab,
   onActiveTabChange,
   messageId,
@@ -321,14 +319,10 @@ export default function CodeExpansionPanel({
           initial={{ x: "100%" }}
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
-          transition={
-            isResizing
-              ? { duration: 0 }
-              : { type: "spring", damping: 30, stiffness: 300 }
-          }
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className={cn(
             "fixed right-0 top-0 bottom-0 bg-background border-l border-border flex flex-col z-100 shadow-2xl",
-            isFullScreen ? "w-full min-w-0" : "min-w-[520px]",
+            isFullScreen ? "w-full min-w-0" : "min-w-0",
           )}
           style={{ width: isFullScreen ? "100%" : width }}
         >
@@ -352,15 +346,11 @@ export default function CodeExpansionPanel({
                       <motion.div
                         layoutId="switcherIndicator"
                         className="absolute inset-0 bg-foreground rounded-sm"
-                        transition={
-                          isResizing
-                            ? { duration: 0 }
-                            : {
-                                type: "spring",
-                                bounce: 0,
-                                duration: 0.3,
-                              }
-                        }
+                        transition={{
+                          type: "spring",
+                          bounce: 0,
+                          duration: 0.3,
+                        }}
                       />
                     )}
                     <Code
@@ -384,15 +374,11 @@ export default function CodeExpansionPanel({
                       <motion.div
                         layoutId="switcherIndicator"
                         className="absolute inset-0 bg-foreground rounded-sm"
-                        transition={
-                          isResizing
-                            ? { duration: 0 }
-                            : {
-                                type: "spring",
-                                bounce: 0,
-                                duration: 0.3,
-                              }
-                        }
+                        transition={{
+                          type: "spring",
+                          bounce: 0,
+                          duration: 0.3,
+                        }}
                       />
                     )}
                     <Eye
@@ -403,30 +389,26 @@ export default function CodeExpansionPanel({
                   </button>
 
                   {/* Sandbox Tab (Commented for future use)
-                  <button
-                    onClick={() => onActiveTabChange("sandbox")}
-                    className={cn(
-                      "relative w-9 h-9 flex items-center justify-center transition-colors cursor-pointer rounded-sm",
-                      activeTab === "sandbox"
-                        ? "text-background"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {activeTab === "sandbox" && (
-                      <motion.div
-                        layoutId="switcherIndicator"
-                        className="absolute inset-0 bg-foreground rounded-sm"
-                        transition={
-                          isResizing
-                            ? { duration: 0 }
-                            : {
-                                type: "spring",
-                                bounce: 0,
-                                duration: 0.3,
-                              }
-                        }
-                      />
-                    )}
+                   <button
+                     onClick={() => onActiveTabChange("sandbox")}
+                     className={cn(
+                       "relative w-9 h-9 flex items-center justify-center transition-colors cursor-pointer rounded-sm",
+                       activeTab === "sandbox"
+                         ? "text-background"
+                         : "text-muted-foreground hover:text-foreground",
+                     )}
+                   >
+                     {activeTab === "sandbox" && (
+                       <motion.div
+                         layoutId="switcherIndicator"
+                         className="absolute inset-0 bg-foreground rounded-sm"
+                         transition={{
+                                 type: "spring",
+                                 bounce: 0,
+                                 duration: 0.3,
+                               }}
+                       />
+                     )}
                     <Box
                       weight="BoldDuotone"
                       size={18}

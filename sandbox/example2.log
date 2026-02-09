@@ -1,0 +1,145 @@
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:115:15)
+    at module evaluation (src\components\preview-runner.tsx:198:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+ GET / 500 in 2.2s (compile: 143ms, render: 2.0s)
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:115:15)
+    at module evaluation (src\components\preview-runner.tsx:198:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:115:15)
+    at module evaluation (src\components\preview-runner.tsx:198:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+ GET / 500 in 432ms (compile: 4ms, render: 429ms)
+ GET / 500 in 434ms (compile: 218ms, render: 216ms)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload when ./src/components/preview-runner.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload when ./src/components/preview-runner.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload when ./src/components/preview-runner.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+✓ Compiled in 82ms
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:117:15)
+    at module evaluation (src\components\preview-runner.tsx:200:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+ GET / 500 in 1715ms (compile: 73ms, render: 1642ms)
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:117:15)
+    at module evaluation (src\components\preview-runner.tsx:200:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:117:15)
+    at module evaluation (src\components\preview-runner.tsx:200:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+ GET / 500 in 459ms (compile: 3ms, render: 456ms)
+ GET / 500 in 250ms (compile: 4ms, render: 246ms)
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:117:15)
+    at module evaluation (src\components\preview-runner.tsx:200:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+ GET / 500 in 704ms (compile: 7ms, render: 697ms)
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:117:15)
+    at module evaluation (src\components\preview-runner.tsx:200:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+ GET / 500 in 793ms (compile: 7ms, render: 786ms)
+⨯ TypeError: name.startsWith is not a function
+    at withLegacyCompat (src\components\preview-runner.tsx:24:12)
+    at Object.get (src\components\preview-runner.tsx:117:15)
+    at module evaluation (src\components\preview-runner.tsx:200:7)
+    at module evaluation (src\app\page.tsx:4:1)
+  22 |     const name = comp.displayName || comp.name || "";
+  23 |     if (
+> 24 |       name.startsWith("use") ||
+     |            ^
+  25 |       (name.length > 0 && name[0] === name[0].toLowerCase())
+  26 |     ) {
+  27 |       return comp; {
+  digest: '2030778426'
+}
+ GET / 500 in 599ms (compile: 5ms, render: 594ms)

@@ -33,7 +33,7 @@ export class GeminiOrchestrator {
 
   constructor() {
     this.model = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       maxOutputTokens: 16384,
       apiKey: process.env.GEMINI_API_KEY,
       maxRetries: 0,

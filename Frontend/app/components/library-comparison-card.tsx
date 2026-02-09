@@ -8,8 +8,6 @@ import { getComponentExample } from "@/lib/component-registry";
 import { Code, Like, Dislike, Copy, CheckCircle } from "@solar-icons/react";
 import { useSortContext } from "@/contexts/sort-context";
 import { useTheme } from "next-themes";
-import AIEditPanel from "./ai-edit-panel";
-import { Stars } from "@solar-icons/react";
 import { ChakraButtonWrapper } from "./wrapper";
 
 interface LibraryComparisonCardProps {
@@ -23,17 +21,6 @@ export default function LibraryComparisonCard({
 }: LibraryComparisonCardProps) {
   const { componentStats, toggleLike, toggleDislike } = useSortContext();
   const [showCode, setShowCode] = useState(false);
-  const [showAIInput, setShowAIInput] = useState(false);
-  const [modifiedCode, setModifiedCode] = useState<string | null>(null);
-  const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [buttonColor, setButtonColor] = useState<string>("blue");
-
-  const compSlug = componentSlug as ComponentSlug;
-  const libStat = componentStats[compSlug]?.libraryStats?.[library.name] || {
-    type: null,
-  };
-  const vote = libStat.type;
-
   const [isMounted, setIsMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const { resolvedTheme } = useTheme();
@@ -52,8 +39,14 @@ export default function LibraryComparisonCard({
     toggleDislike(componentSlug as any, library.name);
   };
 
+  const compSlug = componentSlug as ComponentSlug;
+  const libStat = componentStats[compSlug]?.libraryStats?.[library.name] || {
+    type: null,
+  };
+  const vote = libStat.type;
+
   const handleCopyCode = async () => {
-    const codeToCopy = modifiedCode || example?.code;
+    const codeToCopy = example?.code;
     if (codeToCopy) {
       try {
         await navigator.clipboard.writeText(codeToCopy);
@@ -65,48 +58,11 @@ export default function LibraryComparisonCard({
     }
   };
 
-  const handleAIEdit = async (instruction: string) => {
-    if (!example?.code) return;
-
-    setIsLoadingAI(true);
-
-    // Fake delay to make it look like AI is really processing (2-3 seconds)
-    await new Promise((resolve) =>
-      setTimeout(resolve, 2000 + Math.random() * 1000),
-    );
-
-    // Simple color extraction
-    const lower = instruction.toLowerCase();
-    let newColor = "blue";
-
-    if (lower.includes("red")) newColor = "red";
-    else if (lower.includes("blue")) newColor = "blue";
-    else if (lower.includes("green")) newColor = "green";
-    else if (lower.includes("purple")) newColor = "purple";
-    else if (lower.includes("orange")) newColor = "orange";
-    else if (lower.includes("pink")) newColor = "pink";
-    else if (lower.includes("teal")) newColor = "teal";
-    else if (lower.includes("cyan")) newColor = "cyan";
-
-    setButtonColor(newColor);
-
-    // Update the code display
-    const modifiedCodeText = `import { Button } from '@chakra-ui/react'
-
-export default function Demo() {
-  return <Button colorPalette='${newColor}'>Click me</Button>
-}`;
-
-    setModifiedCode(modifiedCodeText);
-    setIsLoadingAI(false);
-    setShowAIInput(false);
-  };
-
   const componentPreview = isMounted ? (
     example?.component ? (
       library.name === "chakra" && componentSlug === "button" ? (
         <div className="library-components-wrapper w-full h-full flex items-center justify-center p-6">
-          <ChakraButtonWrapper aiColor={buttonColor} />
+          <ChakraButtonWrapper />
         </div>
       ) : (
         <div
@@ -154,29 +110,6 @@ export default function Demo() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setShowAIInput(!showAIInput);
-              }}
-              className={`
-                group flex h-9 w-9 items-center justify-center rounded-lg border
-                transition-all duration-300 focus:outline-none cursor-pointer
-                ${
-                  showAIInput || modifiedCode
-                    ? "bg-primary/10 text-primary border-primary/20"
-                    : "border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground backdrop-blur-sm"
-                }
-              `}
-              aria-label="AI Edit"
-            >
-              <Stars
-                size={18}
-                weight="BoldDuotone"
-                className={`transition-transform duration-300 ${isLoadingAI ? "animate-spin" : "group-hover:scale-110"}`}
-              />
-            </button>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
                 setShowCode(!showCode);
               }}
               className={`
@@ -197,14 +130,6 @@ export default function Demo() {
               />
             </button>
           </div>
-        )}
-
-        {showAIInput && (
-          <AIEditPanel
-            onSubmit={handleAIEdit}
-            isLoading={isLoadingAI}
-            onClose={() => setShowAIInput(false)}
-          />
         )}
 
         {/* Spacer for top button visibility */}
@@ -314,7 +239,7 @@ export default function Demo() {
               showLineNumbers
               wrapLines
             >
-              {modifiedCode || example.code}
+              {example.code}
             </SyntaxHighlighter>
           </div>
         </div>

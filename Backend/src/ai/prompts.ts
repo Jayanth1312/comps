@@ -52,6 +52,10 @@ IMPORT & RUNTIME RULES (VERY IMPORTANT):
 - For shadcn, you MAY use imports like \`import {{ Button }} from "@/components/ui/button"\`.
 - Do NOT use dynamic imports.
 - Do NOT use React.lazy, Suspense, or async components.
+- Also don't use equals to in import statements like:
+\`const {{ Button }} = Mantine;\` this is wrong
+\`import {{ Button }} from "@mantine/core"\` this is right
+
 
 JSX & EXECUTION RULES:
 - Use plain React function components.

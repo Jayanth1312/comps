@@ -41,10 +41,14 @@ export default function ComparePage() {
         <div className="max-w-7xl mx-auto">
           <Link
             href="/explore"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4 md:mb-6"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-muted/20 backdrop-blur-md text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all mb-4 md:mb-6 group w-fit"
           >
-            <ArrowLeft size={20} weight="BoldDuotone" />
-            <span>Back to components</span>
+            <ArrowLeft
+              size={16}
+              weight="BoldDuotone"
+              className="group-hover:-translate-x-0.5 transition-transform"
+            />
+            <span className="text-sm font-medium">Back to components</span>
           </Link>
 
           {/* Component Header with Filter */}

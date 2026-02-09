@@ -29,6 +29,7 @@ interface HistoryDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectSession: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
   currentSessionId?: string;
 }
 
@@ -36,6 +37,7 @@ export default function HistoryDrawer({
   isOpen,
   onClose,
   onSelectSession,
+  onDeleteSession,
   currentSessionId,
 }: HistoryDrawerProps) {
   const { sessionId, user } = useAuth();
@@ -81,6 +83,9 @@ export default function HistoryDrawer({
       });
       if (response.ok) {
         setHistory((prev) => prev.filter((s) => s.chatSessionId !== id));
+        if (onDeleteSession) {
+          onDeleteSession(id);
+        }
       }
     } catch (error) {
       console.error("Failed to delete session:", error);
