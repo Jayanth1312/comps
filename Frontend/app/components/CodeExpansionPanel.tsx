@@ -131,7 +131,7 @@ const PreviewCard = ({
   messageId?: string;
 }) => {
   return (
-    <div className="border-b border-border/40 bg-muted/2 h-[450px] flex flex-col last:border-b-0">
+    <div className="border-b border-border/40 bg-muted/2 h-[500px] flex flex-col last:border-b-0">
       <div className="px-4 py-2 bg-muted/10 flex items-center gap-2">
         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {variant.library} Preview
