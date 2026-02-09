@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Component Library Comparison",
   description: "Compare UI components across different libraries",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 import { UIProviders } from "@/components/ui-providers";
