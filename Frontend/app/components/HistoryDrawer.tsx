@@ -10,7 +10,6 @@ import {
 import {
   MinimalisticMagnifer,
   TrashBinMinimalistic,
-  ChatLine,
   ClockCircle,
 } from "@solar-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,7 +100,7 @@ export default function HistoryDrawer({
       <DrawerContent className="h-full flex flex-col border-l border-border/50 bg-background/95 backdrop-blur-xl">
         <DrawerHeader className="p-6 border-b border-border/50">
           <DrawerTitle className="text-xl font-bold flex items-center gap-2">
-            <ChatLine weight="BoldDuotone" size={24} className="text-primary" />
+            <ClockCircle weight="BoldDuotone" size={24} className="text-primary" />
             Chat History
           </DrawerTitle>
           <div className="relative mt-4">
@@ -172,7 +171,7 @@ export default function HistoryDrawer({
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-center p-6">
               <div className="w-12 h-12 rounded-full bg-muted/20 flex items-center justify-center mb-4 text-muted-foreground">
-                <ChatLine size={24} />
+                <ClockCircle size={24} />
               </div>
               <p className="text-sm font-medium text-foreground">
                 No history found

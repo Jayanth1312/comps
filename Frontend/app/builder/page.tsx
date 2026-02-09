@@ -8,7 +8,7 @@ import {
   Login,
   User,
   Logout,
-  ChatLine,
+  ClockCircle,
   Library,
 } from "@solar-icons/react";
 import ThemeToggle from "@/app/components/theme-toggle";
@@ -82,7 +82,6 @@ export default function BuilderPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const panelWidth = 65;
-
 
   useEffect(() => {
     const savedMessages = localStorage.getItem("builder_messages");
@@ -296,7 +295,7 @@ export default function BuilderPage() {
     setIsHistoryOpen(false);
     try {
       const response = await fetch(
-        `http://localhost:3001/api/history/${sessionIdToLoad}`,
+        `${API_BASE_URL}/api/history/${sessionIdToLoad}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("sessionId")}`,
@@ -313,17 +312,15 @@ export default function BuilderPage() {
         setMessages(normalizedMessages);
         setChatSessionId(sessionIdToLoad);
         localStorage.setItem("chat_session_id", sessionIdToLoad);
-        localStorage.setItem(
-          "builder_messages",
-          JSON.stringify(sessionData.messages),
-        );
+        // localStorage.setItem("builder_messages", JSON.stringify(normalizedMessages)) is handled by the useEffect
         setExpandedCode(null);
         setSelectedVariant(undefined);
       }
     } catch (error) {
       console.error("Failed to load session:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoading(true); // Temporary flip to force a re-render or state check if needed
+      setTimeout(() => setIsLoading(false), 500);
     }
   };
 
@@ -410,9 +407,9 @@ export default function BuilderPage() {
             {user && (
               <button
                 onClick={() => setIsHistoryOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 hover:bg-muted text-foreground rounded-md text-[14px] font-semibold transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-4 bg-muted/50 hover:bg-muted text-foreground rounded-md text-[14px] font-semibold transition-all cursor-pointer"
               >
-                <ChatLine weight="BoldDuotone" size={18} />
+                <ClockCircle weight="BoldDuotone" size={18} />
                 <span className="hidden sm:inline">History</span>
               </button>
             )}
